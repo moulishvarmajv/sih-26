@@ -57,51 +57,8 @@ Modern organized crime syndicates—spanning cyber extortion rings, interstate d
 </div>
 
 The platform cleanly separates the **Investigation Reality** from the **Computation Workflow**:
-
-```text
-                           SHADOW-INTEL PLATFORM
-                                     │
-           ┌─────────────────────────┴─────────────────────────┐
-           ▼                                                   ▼
- ┌───────────────────┐                               ┌───────────────────┐
- │ INVESTIGATION API │                               │  EXECUTION PLANE  │
- │   (FastAPI REST)  │                               │ (Task DAG Engine) │
- └─────────┬─────────┘                               └─────────┬─────────┘
-           │                                                   │
-           ▼                                                   ▼
- ┌───────────────────┐                               ┌───────────────────┐
- │  INVESTIGATOR UI  │                               │ PARALLEL WORKERS  │
- │(React + Cytoscape)│                               │ (CDR, FIR, Banks) │
- └───────────────────┘                               └─────────┬─────────┘
-                                                               │
-                                                               ▼
-                                                     ┌───────────────────┐
-                                                     │ EVIDENCE CONTRACT │
-                                                     │(Source+Provenance)│
-                                                     └─────────┬─────────┘
-                                                               │
-                                                               ▼
-                                                     ┌───────────────────┐
-                                                     │  KNOWLEDGE PLANE  │
-                                                     │  (Neo4j Graph DB) │
-                                                     └─────────┬─────────┘
-                                                               │
-                                  ┌────────────────────────────┼────────────────────────────┐
-                                  ▼                            ▼                            ▼
-                          ┌───────────────┐            ┌───────────────┐            ┌───────────────┐
-                          │ Centrality/AI │            │  Mule Tracing │            │ Tower Matches │
-                          └───────────────┘            └───────────────┘            └───────────────┘
-                                  │                            │                            │
-                                  └────────────────────────────┼────────────────────────────┘
-                                                               ▼
-                                                     ┌───────────────────┐
-                                                     │   FINAL OUTPUTS   │
-                                                     │ Graph•Timeline•Doc│
-                                                     └───────────────────┘
-```
-
-1. **Knowledge Graph (Neo4j):** Stores real-world entities (`Suspect`, `Phone`, `Device`, `Account`, `CellTower`, `FIRCase`) and relationships (`CALLED`, `TRANSFERRED_TO`, `INSERTED_IN`, `CO_LOCATED_WITH`).
-2. **Execution Graph (Task DAG):** Schedules asynchronous source ingestion, dependency resolution, parallel worker fan-out, and evidence fusion.
+* **1. Knowledge Graph (Neo4j):** Stores real-world entities (`Suspect`, `Phone`, `Device`, `Account`, `CellTower`, `FIRCase`) and multi-hop relationships (`CALLED`, `TRANSFERRED_TO`, `INSERTED_IN`, `CO_LOCATED_WITH`).
+* **2. Execution Graph (Task DAG):** Schedules asynchronous source ingestion, dependency resolution, parallel worker fan-out, and evidence fusion.
 
 ---
 

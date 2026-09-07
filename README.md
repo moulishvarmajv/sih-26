@@ -52,6 +52,10 @@ Modern organized crime syndicates—spanning cyber extortion rings, interstate d
 
 ## 🏛️ System Architecture: The Two-Graph Model
 
+<div align="center">
+  <img src="docs/assets/two_graph_architecture.jpg" alt="SHADOW-INTEL Two-Graph Architecture Blueprint" width="100%" />
+</div>
+
 The platform cleanly separates the **Investigation Reality** from the **Computation Workflow**:
 
 ```text

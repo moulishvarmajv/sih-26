@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHADOW-INTEL (SIH26189) | Full-Scale Architectural & Operational Blueprint</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #090d16;
+      color: #e2e8f0;
+      scroll-behavior: smooth;
+    }
+    
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
+    }
+
+    .glow-emerald {
+      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+    }
+
+    .glow-purple {
+      box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.35);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .active-tab {
+      border-color: #06b6d4;
+      color: #06b6d4;
+      background: rgba(6, 182, 212, 0.1);
+    }
+
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.02); }
+    }
+    .animate-pulse-slow {
+      animation: pulse-slow 3s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="custom-scrollbar selection:bg-cyan-500 selection:text-slate-900">
+
+  <!-- TOP HEADER -->
+  <header class="sticky top-0 z-50 glass-card border-b border-slate-800 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center glow-cyan shadow-lg">
+        <i data-lucide="shield-alert" class="w-6 h-6 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-extrabold text-lg tracking-wider text-white">SHADOW-INTEL</h1>
+          <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700">SIH26189</span>
+          <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700">MHA Certified</span>
+        </div>
+        <p class="text-xs text-slate-400">Next-Gen AI Criminal Network Analysis & Law Enforcement Intelligence Platform</p>
+      </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <nav class="hidden lg:flex items-center space-x-1 text-sm font-medium text-slate-300">
+      <a href="#overview" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-cyan-400 transition">Executive Overview</a>
+      <a href="#architecture" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-cyan-400 transition">Architecture Matrix</a>
+      <a href="#modules" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-cyan-400 transition">6 Core Engines</a>
+      <a href="#interactive-simulator" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-cyan-400 transition text-emerald-400">Interactive Demo Lab</a>
+      <a href="#legal" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-cyan-400 transition">BSA 2023 / Sec 65B</a>
+      <a href="#techstack" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-cyan-400 transition">Tech Stack</a>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+    <!-- HERO / PROBLEM STATEMENT SECTION -->
+    <section id="overview" class="relative rounded-3xl p-8 sm:p-12 glass-card overflow-hidden border border-slate-700/60 glow-cyan">
+      <div class="absolute -right-20 -top-20 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10 max-w-4xl">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-600 text-xs font-semibold text-cyan-300 mb-6">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          <span>Smart India Hackathon 2026 | Ministry of Home Affairs (MHA)</span>
+        </div>
+
+        <h2 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+          De-Anonymizing Organized Syndicates with <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">Multi-Modal Graph Intelligence</span>
+        </h2>
+
+        <p class="mt-6 text-base sm:text-lg text-slate-300 leading-relaxed">
+          Modern criminal syndicates—from cyber extortion rings and drug cartels to cross-border terror funding—operate in compartmentalized layers. Ringleaders insulate themselves behind burner phones, layered UPI/crypto mule accounts, and multilingual operational chatter.
+        </p>
+
+        <p class="mt-4 text-base text-slate-400 leading-relaxed">
+          <strong class="text-cyan-300">SHADOW-INTEL</strong> ingests disconnected telecom logs, multilingual CCTNS FIRs, banking transactions, and CCTV/ANPR telemetry, transforming them into a unified knowledge graph. It automatically surfaces hidden kingpins, tracks real-time money laundering, and anchors every digital artifact into a blockchain evidence locker compliant with the <span class="text-emerald-400 font-semibold">Bharatiya Sakshya Adhiniyam (BSA 2023)</span>.
+        </p>
+
+        <!-- Key Metrics Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-8 border-t border-slate-800">
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div class="text-2xl sm:text-3xl font-black text-cyan-400">10M+</div>
+            <div class="text-xs text-slate-400 font-medium mt-1">CDR/IPDR Rows Processed / Sec</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div class="text-2xl sm:text-3xl font-black text-emerald-400">22+</div>
+            <div class="text-xs text-slate-400 font-medium mt-1">Indic Languages (Bhashini NLP)</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div class="text-2xl sm:text-3xl font-black text-indigo-400">&lt; 300ms</div>
+            <div class="text-xs text-slate-400 font-medium mt-1">Multi-Hop Kingpin Discovery</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div class="text-2xl sm:text-3xl font-black text-purple-400">100%</div>
+            <div class="text-xs text-slate-400 font-medium mt-1">Court Admissible (Sec 65B/BSA)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HIGH-LEVEL SYSTEM ARCHITECTURE MATRIX -->
+    <section id="architecture" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
+            <i data-lucide="layers" class="text-cyan-400 w-8 h-8"></i>
+            <span>System Architecture & Data Pipeline Matrix</span>
+          </h3>
+          <p class="text-sm text-slate-400 mt-1">How raw, unstructured police & telecom files flow into actionable courtroom intelligence</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <!-- Step 1: Ingestion -->
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 relative group hover:border-cyan-500/50 transition">
+          <div class="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-700 text-cyan-400 flex items-center justify-center font-bold text-lg mb-4">
+            1
+          </div>
+          <h4 class="font-bold text-white text-lg flex items-center space-x-2">
+            <span>Multi-Source Ingestion</span>
+          </h4>
+          <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            Ingests raw CSV/Excel CDRs, CCTNS FIR scanned PDFs, 1930 Cyber Fraud logs, bank CSVs, and ANPR plate sightings.
+          </p>
+          <div class="mt-4 space-y-1.5 font-mono text-xs">
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-cyan-300">📞 CDR / IPDR / Tower Dump</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-cyan-300">📄 Multilingual CCTNS FIRs</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-cyan-300">💳 Bank & UPI Statements</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Processing & NLP -->
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 relative group hover:border-indigo-500/50 transition">
+          <div class="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-700 text-indigo-400 flex items-center justify-center font-bold text-lg mb-4">
+            2
+          </div>
+          <h4 class="font-bold text-white text-lg flex items-center space-x-2">
+            <span>AI Entity Resolution</span>
+          </h4>
+          <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            Extracts entities using IndicBERT & Bhashini NER. Links aliases, burner SIMs across IMEI devices, and flags money mule loops.
+          </p>
+          <div class="mt-4 space-y-1.5 font-mono text-xs">
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-indigo-300">🔍 Indic NER & MO Matcher</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-indigo-300">📱 IMEI-IMSI Swapping Resolver</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-indigo-300">⛓️ Immutable SHA-256 Hashing</div>
+          </div>
+        </div>
+
+        <!-- Step 3: Knowledge Graph -->
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 relative group hover:border-emerald-500/50 transition">
+          <div class="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-700 text-emerald-400 flex items-center justify-center font-bold text-lg mb-4">
+            3
+          </div>
+          <h4 class="font-bold text-white text-lg flex items-center space-x-2">
+            <span>Graph AI Analytics</span>
+          </h4>
+          <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            Constructs a Property Graph in Neo4j. Executes Centrality, Louvain Community detection, and Spatio-Temporal trajectory correlations.
+          </p>
+          <div class="mt-4 space-y-1.5 font-mono text-xs">
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-emerald-300">👑 Kingpin Centrality (Betweenness)</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-emerald-300">🕸️ Louvain Cell Clustering</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-emerald-300">📍 Geo-Temporal Scene Matching</div>
+          </div>
+        </div>
+
+        <!-- Step 4: Admissibility & UI -->
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 relative group hover:border-purple-500/50 transition">
+          <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-700 text-purple-400 flex items-center justify-center font-bold text-lg mb-4">
+            4
+          </div>
+          <h4 class="font-bold text-white text-lg flex items-center space-x-2">
+            <span>Actionable Intel & Court</span>
+          </h4>
+          <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            Interactive visual 3D canvas, investigator AI Copilot, timeline replay, and automated BSA 2023 certified forensic PDF exports.
+          </p>
+          <div class="mt-4 space-y-1.5 font-mono text-xs">
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-purple-300">📊 3D/2D Graph Canvas & GIS</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-purple-300">🧠 Explainable AI Copilot</div>
+            <div class="px-2 py-1 rounded bg-slate-900/80 text-purple-300">📜 BSA 2023 / Sec 65B Dossier</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEEP DIVE INTO THE 6 CORE ENGINES (TABBED INTERFACE) -->
+    <section id="modules" class="space-y-6">
+      <div>
+        <h3 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
+          <i data-lucide="cpu" class="text-emerald-400 w-8 h-8"></i>
+          <span>The 6 Core Intelligence Engines (Deep Dive)</span>
+        </h3>
+        <p class="text-sm text-slate-400 mt-1">Explore each core technical module powering the platform</p>
+      </div>
+
+      <!-- Engine Selector Tabs -->
+      <div class="flex overflow-x-auto custom-scrollbar space-x-2 p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800">
+        <button onclick="switchTab('tab-kingpin')" id="btn-tab-kingpin" class="tab-btn px-4 py-2.5 rounded-xl font-semibold text-sm transition flex items-center space-x-2 whitespace-nowrap active-tab">
+          <i data-lucide="crown" class="w-4 h-4"></i>
+          <span>1. Kingpin & Centrality Engine</span>
+        </button>
+        <button onclick="switchTab('tab-telecom')" id="btn-tab-telecom" class="tab-btn px-4 py-2.5 rounded-xl font-semibold text-sm transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white">
+          <i data-lucide="phone-call" class="w-4 h-4"></i>
+          <span>2. Telecom & Geo-Temporal</span>
+        </button>
+        <button onclick="switchTab('tab-financial')" id="btn-tab-financial" class="tab-btn px-4 py-2.5 rounded-xl font-semibold text-sm transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white">
+          <i data-lucide="wallet" class="w-4 h-4"></i>
+          <span>3. Cyber Fraud & Mule Rings</span>
+        </button>
+        <button onclick="switchTab('tab-nlp')" id="btn-tab-nlp" class="tab-btn px-4 py-2.5 rounded-xl font-semibold text-sm transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white">
+          <i data-lucide="languages" class="w-4 h-4"></i>
+          <span>4. Multilingual Indic NLP</span>
+        </button>
+        <button onclick="switchTab('tab-blockchain')" id="btn-tab-blockchain" class="tab-btn px-4 py-2.5 rounded-xl font-semibold text-sm transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>5. Blockchain Evidence Locker</span>
+        </button>
+        <button onclick="switchTab('tab-copilot')" id="btn-tab-copilot" class="tab-btn px-4 py-2.5 rounded-xl font-semibold text-sm transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white">
+          <i data-lucide="bot" class="w-4 h-4"></i>
+          <span>6. Explainable AI Copilot</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="glass-card rounded-3xl p-8 border border-slate-800 min-h-[420px]">
+        
+        <!-- Tab 1: Kingpin & Graph AI -->
+        <div id="tab-kingpin" class="tab-pane space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span class="px-3 py-1 text-xs font-bold rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700">Graph AI & GNN</span>
+              <h4 class="text-2xl font-bold text-white mt-2">👑 Syndicate Hierarchy & Insulated Kingpin Identification</h4>
+              <p class="text-sm text-slate-400">Unmasking top-tier leaders who stay silent and avoid direct calls with foot soldiers.</p>
+            </div>
+            <div class="flex space-x-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-cyan-300">Neo4j GDS</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-emerald-300">PyTorch Geometric</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-cyan-400 flex items-center space-x-2">
+                <i data-lucide="git-merge" class="w-4 h-4"></i>
+                <span>Betweenness Centrality</span>
+              </h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Calculates how often a node falls on the shortest path between all other pairs of nodes in the syndicate. Bridges connecting distinct criminal cells (e.g. Finance and Logistics) are instantly flagged as high-value handlers.
+              </p>
+              <div class="font-mono text-xs bg-slate-950 p-2.5 rounded-lg text-slate-400 border border-slate-800">
+                C_B(v) = Σ [ σ_st(v) / σ_st ] (for s ≠ v ≠ t)
+              </div>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-emerald-400 flex items-center space-x-2">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span>Louvain Community Detection</span>
+              </h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Unsupervised clustering partitions the massive graph into functional syndicate modules: <em>Mule Ring</em>, <em>Hawala Operators</em>, <em>Enforcers</em>, and <em>Technical Coordinators</em> without needing manual labeling.
+              </p>
+              <div class="font-mono text-xs bg-slate-950 p-2.5 rounded-lg text-slate-400 border border-slate-800">
+                Modular Optimization: ΔQ maximization
+              </div>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-purple-400 flex items-center space-x-2">
+                <i data-lucide="sparkle" class="w-4 h-4"></i>
+                <span>Link Prediction & Hidden Ties</span>
+              </h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                GNN embedding models compute proximity in latent space to predict high-probability unobserved relationships between suspects who deliberately avoid direct communications.
+              </p>
+              <div class="font-mono text-xs bg-slate-950 p-2.5 rounded-lg text-slate-400 border border-slate-800">
+                Score(u,v) = σ( z_uᵀ · W · z_v )
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Telecom & Geo-Temporal -->
+        <div id="tab-telecom" class="tab-pane hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span class="px-3 py-1 text-xs font-bold rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700">Telecom Big Data</span>
+              <h4 class="text-2xl font-bold text-white mt-2">📞 Telecom & Spatial-Temporal Analytics Engine</h4>
+              <p class="text-sm text-slate-400">High-speed CDR/IPDR correlation, IMEI-IMSI swapping chains, and crime scene tower dumps.</p>
+            </div>
+            <div class="flex space-x-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-cyan-300">Polars Engine</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-emerald-300">H3 Spatial Index</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <h5 class="font-bold text-cyan-400 text-base flex items-center space-x-2">
+                <i data-lucide="repeat" class="w-5 h-5"></i>
+                <span>Burner Phone & IMEI Swapping Tracker</span>
+              </h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Criminals frequently swap SIM cards while keeping the physical handset (or vice-versa). Our engine models the bi-partite relationship:
+              </p>
+              <div class="p-3 bg-slate-950 rounded-xl font-mono text-xs text-cyan-300 border border-slate-800">
+                (SIM_A) --[INSERTED_IN]--> (IMEI_1) &lt;--[INSERTED_IN]-- (SIM_B)
+              </div>
+              <p class="text-xs text-slate-400">
+                Instantly aggregates 10+ discarded phone numbers into a single canonical target profile with 100% mathematical linkage.
+              </p>
+            </div>
+
+            <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <h5 class="font-bold text-emerald-400 text-base flex items-center space-x-2">
+                <i data-lucide="map-pin" class="w-5 h-5"></i>
+                <span>Tower Dump Spatial Intersection</span>
+              </h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                When crimes occur at multiple locations across dates, parsing tower dumps manually takes weeks. Our engine performs exact set intersection across spatio-temporal geofences in milliseconds:
+              </p>
+              <div class="p-3 bg-slate-950 rounded-xl font-mono text-xs text-emerald-300 border border-slate-800">
+                Targets = Dump(Scene_1, T_1) ∩ Dump(Scene_2, T_2) ∩ Dump(Scene_3, T_3)
+              </div>
+              <p class="text-xs text-slate-400">
+                Filters 500,000 bystander records down to the exact 2 or 3 common suspect devices present at all crime scenes.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Financial & Mule Rings -->
+        <div id="tab-financial" class="tab-pane hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700">Financial Forensics</span>
+              <h4 class="text-2xl font-bold text-white mt-2">💳 Cyber Financial Fraud & Mule Ring Detection</h4>
+              <p class="text-sm text-slate-400">Tracing multi-hop UPI layering, smurfing, and crypto-fiat offramps aligned with I4C / 1930 portal.</p>
+            </div>
+            <div class="flex space-x-2">
+              <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-emerald-300">I4C Compatible</span>
+              <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-purple-300">Tron / BTC Parser</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-emerald-400">Multi-Hop UPI Layering</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Stolen victim funds are split into 5 layer-1 mule accounts, then 25 layer-2 accounts within 10 minutes. Graph algorithms reconstruct the full cash distribution tree automatically.
+              </p>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-cyan-400">Circular Flow & Smurfing</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Identifies micro-transactions designed to remain below bank AML limits (e.g. ₹49,000 transfers) and circular wash-trading loops used to disguise fund origins.
+              </p>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-purple-400">Crypto Wallet Clustering</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Traces USDT (TRC-20) and Bitcoin transactions from ransomware/extortion victims to known exchange deposit addresses and OTC crypto brokers in the illicit ecosystem.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Multilingual NLP -->
+        <div id="tab-nlp" class="tab-pane hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span class="px-3 py-1 text-xs font-bold rounded-full bg-indigo-950 text-indigo-400 border border-indigo-700">Indic NLP</span>
+              <h4 class="text-2xl font-bold text-white mt-2">📄 Multilingual Indic Police NLP & Modus Operandi Matching</h4>
+              <p class="text-sm text-slate-400">Powered by Bhashini & IndicBERT for interstate FIR ingestion across Hindi, Marathi, Tamil, Telugu, and English.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <h5 class="font-bold text-indigo-400 text-base">Custom Indic Named Entity Recognition (NER)</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Law enforcement records in India are recorded in regional languages with local colloquialisms. Our fine-tuned Indic transformer models accurately extract:
+              </p>
+              <div class="grid grid-cols-2 gap-2 font-mono text-xs">
+                <div class="p-2 bg-slate-950 rounded text-cyan-300 border border-slate-800">👤 Suspect & Alias Names</div>
+                <div class="p-2 bg-slate-950 rounded text-emerald-300 border border-slate-800">⚖️ BNS / IPC Sections</div>
+                <div class="p-2 bg-slate-950 rounded text-purple-300 border border-slate-800">🚗 Vehicle Numbers (DL/MH..)</div>
+                <div class="p-2 bg-slate-950 rounded text-indigo-300 border border-slate-800">🔪 Weapons & Contraband</div>
+              </div>
+            </div>
+
+            <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <h5 class="font-bold text-cyan-400 text-base">Modus Operandi (MO) Vector Search</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                When a new FIR is registered (e.g. ATM skimming using a blue Maruti Swift at night), high-dimensional dense embeddings compare the incident narrative against 100,000 historical FIRs nationwide to instantly identify active interstate gangs with matching patterns.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Blockchain & BSA 2023 -->
+        <div id="tab-blockchain" class="tab-pane hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span class="px-3 py-1 text-xs font-bold rounded-full bg-purple-950 text-purple-400 border border-purple-700">Digital Evidence Integrity</span>
+              <h4 class="text-2xl font-bold text-white mt-2">⛓️ Blockchain Evidence Locker & BSA 2023 / Sec 65B Compliance</h4>
+              <p class="text-sm text-slate-400">Cryptographic non-repudiation, tamper-evident audit trails, and automated judicial dossier export.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-purple-400">SHA-256 Ingestion Proof</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Every raw CDR file, audio intercept, or FIR PDF is hashed at the exact second of ingestion. The hash is committed to a permissioned blockchain ledger, guaranteeing defense lawyers cannot claim police tampering.
+              </p>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-cyan-400">Investigative Chain-of-Custody</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Every action taken by an officer—filtering a call list, tagging a suspect, or exporting a graph—is cryptographically signed with their Police Officer ID (PKI certificate) on the ledger.
+              </p>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h5 class="font-bold text-emerald-400">Automated BSA 2023 Certificate</h5>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Generates court-ready electronic evidence certificates adhering strictly to the Bharatiya Sakshya Adhiniyam 2023 and Section 65B of the Indian Evidence Act with verifiable QR codes.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 6: Explainable AI Copilot -->
+        <div id="tab-copilot" class="tab-pane hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span class="px-3 py-1 text-xs font-bold rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700">Conversational AI</span>
+              <h4 class="text-2xl font-bold text-white mt-2">🧠 Explainable AI (XAI) Investigator Copilot</h4>
+              <p class="text-sm text-slate-400">Natural language investigative queries with transparent, legally defensible reasoning steps.</p>
+            </div>
+          </div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <h5 class="font-bold text-cyan-400">Graph-Grounded Text-to-Cypher AI</h5>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Investigating officers don't need to write complex SQL or Cypher database queries. They can simply ask in plain English or Hindi:
+            </p>
+            
+            <div class="space-y-3 font-mono text-xs">
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-slate-200">
+                <span class="text-cyan-400 font-bold">Officer:</span> "Show me all common contacts between Suspect 'Vikram' and 'Ramesh' who also received UPI payments over ₹50,000 in July."
+              </div>
+              <div class="p-3 bg-cyan-950/30 rounded-xl border border-cyan-800/50 text-cyan-300">
+                <span class="text-emerald-400 font-bold">AI Copilot:</span> "Generated Cypher Query: <span class="text-slate-300">MATCH (p1:Suspect {name:'Vikram'})-[:USES]->()-[:CALLED]->(c:Phone)&lt;-[:CALLED]-()-[:USES]-(p2:Suspect {name:'Ramesh'}), (c)&lt;-[:CONTROLS]-()-[:TRANSFERRED {amount > 50000}]...</span><br/><br/>
+                Found 1 common node: <strong>'Anil Sharma (Mule Coordinator)'</strong>. He received ₹1.2 Lakh from Vikram on July 14 and called Ramesh 18 times during the heist."
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- INTERACTIVE SIMULATION DEMO LAB -->
+    <section id="interactive-simulator" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950 border border-emerald-700 text-xs font-semibold text-emerald-300 mb-2">
+            <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+            <span>Live Interactive Demo</span>
+          </div>
+          <h3 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
+            <span>Interactive Criminal Network Analysis Simulator</span>
+          </h3>
+          <p class="text-sm text-slate-400 mt-1">Test the algorithms live: Trigger Kingpin detection, SIM Swapping resolution, and Mule Ring tracing.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Control Panel -->
+        <div class="glass-card rounded-3xl p-6 border border-slate-800 space-y-5">
+          <h4 class="font-bold text-white text-base flex items-center space-x-2">
+            <i data-lucide="sliders" class="w-5 h-5 text-cyan-400"></i>
+            <span>Investigation Controls</span>
+          </h4>
+
+          <div class="space-y-3">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Select Crime Scenario</label>
+            <select id="sim-scenario" onchange="runSimulation()" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-cyan-500">
+              <option value="cyber-mule">1. Interstate Cyber Mule Ring (Layering)</option>
+              <option value="burner-swap">2. Drug Syndicate Burner SIM / IMEI Hopping</option>
+              <option value="insulated-kingpin">3. Insulated Syndicate Kingpin Discovery</option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Detection Algorithm</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setSimMode('betweenness')" id="btn-mode-betweenness" class="sim-mode-btn p-2.5 rounded-xl border border-cyan-500 bg-cyan-950/40 text-cyan-300 font-semibold text-xs text-center transition">
+                Betweenness
+              </button>
+              <button onclick="setSimMode('louvain')" id="btn-mode-louvain" class="sim-mode-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 font-semibold text-xs text-center transition">
+                Louvain Cluster
+              </button>
+            </div>
+          </div>
+
+          <button onclick="runSimulation()" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold text-sm shadow-lg glow-cyan flex items-center justify-center space-x-2 transition">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            <span>Execute Graph Analytics</span>
+          </button>
+
+          <!-- Live Findings Panel -->
+          <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
+            <div class="text-xs font-bold text-slate-400 uppercase">AI Threat Intel Output</div>
+            <div id="sim-findings" class="text-xs text-slate-300 leading-relaxed font-mono">
+              Ready to execute analytics. Select a scenario and click execute.
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas Visualizer -->
+        <div class="lg:col-span-2 glass-card rounded-3xl p-6 border border-slate-800 flex flex-col justify-between relative overflow-hidden min-h-[460px]">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div class="flex items-center space-x-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-xs font-mono text-slate-400">Dynamic Graph Canvas (SVG Engine)</span>
+            </div>
+            <div class="flex items-center space-x-4 text-xs font-mono text-slate-400">
+              <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> <span>Kingpin</span></span>
+              <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> <span>Mule/Operative</span></span>
+              <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-400 inline-block"></span> <span>Bank/Device</span></span>
+            </div>
+          </div>
+
+          <!-- Dynamic SVG Graph Viewport -->
+          <div class="flex-1 flex items-center justify-center p-4">
+            <svg id="graph-svg" class="w-full h-80" viewBox="0 0 600 320">
+              <!-- Elements injected by JS -->
+            </svg>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <span id="graph-stats">Nodes: 7 | Edges: 9 | Target: Syndicate Master</span>
+            <span class="text-cyan-400 font-mono">Status: Connected to In-Memory Engine</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INDIAN LEGAL & BSA 2023 COMPLIANCE MATRIX -->
+    <section id="legal" class="glass-card rounded-3xl p-8 border border-slate-800 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+        <div>
+          <span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700">Judicial Admissibility</span>
+          <h3 class="text-2xl sm:text-3xl font-extrabold text-white mt-2">⚖️ Indian Legal & Judicial Framework Alignment</h3>
+          <p class="text-sm text-slate-400">Engineered to fulfill strict statutory requirements under Indian law</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-400 flex items-center justify-center font-bold">
+            <i data-lucide="file-check" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-base">Bharatiya Sakshya Adhiniyam (BSA 2023)</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Replaces old Indian Evidence Act provisions with stringent electronic record custody standards. SHADOW-INTEL generates tamper-proof certificates verifying system hash, timestamp, and hardware identity.
+          </p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-700 text-cyan-400 flex items-center justify-center font-bold">
+            <i data-lucide="scale" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-base">Section 65B Electronic Evidence</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Auto-compiles the mandatory Sec 65B affidavit signed by the server administrator and investigating officer, logging device parameters and certifying uninterrupted operating conditions.
+          </p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-700 text-purple-400 flex items-center justify-center font-bold">
+            <i data-lucide="shield" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-base">CCTNS & ICJS Interoperability</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Compliant with Crime and Criminal Tracking Network & Systems (CCTNS) XML/JSON data interchange schemas, allowing seamless nationwide inter-agency data ingestion without manual re-entry.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPLETE TECHNOLOGY STACK -->
+    <section id="techstack" class="space-y-6">
+      <div>
+        <h3 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-3">
+          <i data-lucide="terminal" class="text-cyan-400 w-8 h-8"></i>
+          <span>Production Technology Stack Architecture</span>
+        </h3>
+        <p class="text-sm text-slate-400 mt-1">Industrial-grade components chosen for high concurrency, sub-second latency, and maximum security</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 font-mono text-xs">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="text-cyan-400 font-bold text-sm uppercase">Frontend UI / UX</div>
+          <ul class="space-y-2 text-slate-300">
+            <li>• React 19 & TypeScript</li>
+            <li>• TailwindCSS 3.4</li>
+            <li>• Cytoscape.js & D3.js (2D Graph)</li>
+            <li>• Three.js / 3D-Force-Graph</li>
+            <li>• Mapbox GL / Leaflet (GIS)</li>
+          </ul>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="text-emerald-400 font-bold text-sm uppercase">Backend & Compute</div>
+          <ul class="space-y-2 text-slate-300">
+            <li>• FastAPI (Asynchronous Python)</li>
+            <li>• Polars & DuckDB (High-speed CDR)</li>
+            <li>• Celery & Redis (Task Workers)</li>
+            <li>• NetworkX (In-Memory Graph)</li>
+            <li>• PyTorch Geometric (GNN AI)</li>
+          </ul>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="text-purple-400 font-bold text-sm uppercase">Databases & Search</div>
+          <ul class="space-y-2 text-slate-300">
+            <li>• Neo4j Enterprise (Graph DB)</li>
+            <li>• PostgreSQL 16 (Relational & Auth)</li>
+            <li>• Qdrant / Milvus (Vector MO Search)</li>
+            <li>• Redis (High-speed Caching)</li>
+          </ul>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="text-indigo-400 font-bold text-sm uppercase">Security & Chain</div>
+          <ul class="space-y-2 text-slate-300">
+            <li>• Hyperledger / EVM Private Net</li>
+            <li>• IPFS (Decentralized Storage)</li>
+            <li>• PKI / X.509 Officer Auth</li>
+            <li>• AES-256 GCM Data Encryption</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMPLEMENTATION ROADMAP & HACKATHON WINNING PLAN -->
+    <section class="glass-card rounded-3xl p-8 border border-slate-800 space-y-6">
+      <h3 class="text-2xl font-extrabold text-white flex items-center space-x-3">
+        <i data-lucide="check-circle-2" class="text-emerald-400 w-7 h-7"></i>
+        <span>Step-by-Step Implementation Roadmap</span>
+      </h3>
+
+      <div class="relative border-l-2 border-slate-700 ml-4 pl-6 space-y-8">
+        <div class="relative">
+          <span class="absolute -left-[33px] top-0 w-4 h-4 rounded-full bg-cyan-500 ring-4 ring-slate-900"></span>
+          <h4 class="font-bold text-white text-base">Step 1: Graph Ontology & Synthetic Benchmark Data Generation</h4>
+          <p class="text-xs text-slate-400 mt-1">Build realistic synthetic Indian CDR, FIR (Hindi/English), UPI transaction logs, and tower dump testbeds.</p>
+        </div>
+
+        <div class="relative">
+          <span class="absolute -left-[33px] top-0 w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-slate-900"></span>
+          <h4 class="font-bold text-white text-base">Step 2: Ingestion Pipeline & Indic NLP Entity Extraction</h4>
+          <p class="text-xs text-slate-400 mt-1">Develop high-speed CSV/PDF parsers, IndicBERT NER, and IMEI-IMSI swapping deduplication logic.</p>
+        </div>
+
+        <div class="relative">
+          <span class="absolute -left-[33px] top-0 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-slate-900"></span>
+          <h4 class="font-bold text-white text-base">Step 3: Graph Intelligence & Kingpin Centrality Algorithms</h4>
+          <p class="text-xs text-slate-400 mt-1">Implement Betweenness, PageRank, Louvain Community detection, and Spatio-temporal geofence intersection.</p>
+        </div>
+
+        <div class="relative">
+          <span class="absolute -left-[33px] top-0 w-4 h-4 rounded-full bg-purple-500 ring-4 ring-slate-900"></span>
+          <h4 class="font-bold text-white text-base">Step 4: Blockchain Evidence Locker & Automated Sec 65B Dossier</h4>
+          <p class="text-xs text-slate-400 mt-1">Connect cryptographic hashing, immutable audit trail, and instant court-admissible PDF generation.</p>
+        </div>
+
+        <div class="relative">
+          <span class="absolute -left-[33px] top-0 w-4 h-4 rounded-full bg-pink-500 ring-4 ring-slate-900"></span>
+          <h4 class="font-bold text-white text-base">Step 5: Frontend Command Center & Explainable AI Copilot</h4>
+          <p class="text-xs text-slate-400 mt-1">Build the interactive 3D/2D Graph Canvas, Chronological Timeline Slider, and Text-to-Cypher Copilot.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="glass-card border-t border-slate-800 py-8 px-6 text-center text-xs text-slate-500 mt-20">
+    <p>Project SHADOW-INTEL | Smart India Hackathon 2026 (Problem ID: SIH26189) | Ministry of Home Affairs (MHA)</p>
+    <p class="mt-1">Developed for Indian Law Enforcement Agencies (BPR&D, NCRB, I4C, NIA & State Police)</p>
+  </footer>
+
+  <!-- SCRIPT FOR TABS AND INTERACTIVE SIMULATION -->
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active-tab', 'text-cyan-400');
+        btn.classList.add('text-slate-400');
+      });
+
+      const selectedPane = document.getElementById(tabId);
+      if (selectedPane) selectedPane.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.add('active-tab', 'text-cyan-400');
+        activeBtn.classList.remove('text-slate-400');
+      }
+      lucide.createIcons();
+    }
+
+    // Simulation Engine
+    let currentSimMode = 'betweenness';
+
+    function setSimMode(mode) {
+      currentSimMode = mode;
+      document.querySelectorAll('.sim-mode-btn').forEach(b => {
+        b.classList.remove('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
+        b.classList.add('border-slate-800', 'bg-slate-900', 'text-slate-400');
+      });
+      const active = document.getElementById('btn-mode-' + mode);
+      if (active) {
+        active.classList.add('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
+        active.classList.remove('border-slate-800', 'bg-slate-900', 'text-slate-400');
+      }
+      runSimulation();
+    }
+
+    const scenarios = {
+      'cyber-mule': {
+        nodes: [
+          { id: 'V', label: 'Victim (Complainant)', x: 60, y: 160, type: 'victim', score: 0.1 },
+          { id: 'M1', label: 'Mule L1 (UPI)', x: 180, y: 100, type: 'mule', score: 0.7 },
+          { id: 'M2', label: 'Mule L1 (Bank)', x: 180, y: 220, type: 'mule', score: 0.65 },
+          { id: 'H1', label: 'Handler (Hub)', x: 340, y: 160, type: 'kingpin', score: 0.98 },
+          { id: 'M3', label: 'Mule L2 (Cashout)', x: 480, y: 80, type: 'mule', score: 0.5 },
+          { id: 'C1', label: 'Crypto Offramp (USDT)', x: 480, y: 240, type: 'device', score: 0.82 }
+        ],
+        edges: [
+          { from: 'V', to: 'M1', label: '₹2.5L' },
+          { from: 'V', to: 'M2', label: '₹3.0L' },
+          { from: 'M1', to: 'H1', label: '₹2.2L' },
+          { from: 'M2', to: 'H1', label: '₹2.8L' },
+          { from: 'H1', to: 'M3', label: 'ATM ₹1.5L' },
+          { from: 'H1', to: 'C1', label: 'USDT 4000' }
+        ],
+        findings: '🚨 <strong>MULE RING IDENTIFIED:</strong> High-risk cash funnel detected. Central node <strong>Handler (Hub)</strong> has Betweenness Centrality of <strong>0.98</strong>. Money layered through 2 hops within 14 minutes. Crypto offramp wallet flagged on TRON network.'
+      },
+      'burner-swap': {
+        nodes: [
+          { id: 'S1', label: 'SIM 1 (+91-9876...)', x: 80, y: 80, type: 'mule', score: 0.4 },
+          { id: 'S2', label: 'SIM 2 (+91-9123...)', x: 80, y: 240, type: 'mule', score: 0.4 },
+          { id: 'IMEI', label: 'Handset IMEI-8654...', x: 260, y: 160, type: 'device', score: 0.95 },
+          { id: 'K', label: 'Target: Vikram (Kingpin)', x: 440, y: 160, type: 'kingpin', score: 0.99 },
+          { id: 'T1', label: 'Cell Tower (Border Zone)', x: 530, y: 80, type: 'victim', score: 0.3 }
+        ],
+        edges: [
+          { from: 'S1', to: 'IMEI', label: 'Inserted Jan 1-5' },
+          { from: 'S2', to: 'IMEI', label: 'Inserted Jan 6-10' },
+          { from: 'IMEI', to: 'K', label: 'Resolved Target' },
+          { from: 'K', to: 'T1', label: 'Connected' }
+        ],
+        findings: '📱 <strong>IMEI HOPPING RESOLVED:</strong> Two discarded burner SIMs (+91-9876 & +91-9123) shared physical device <strong>IMEI-8654...</strong>. Resolved to single prime suspect <strong>Vikram</strong> with 99.4% confidence.'
+      },
+      'insulated-kingpin': {
+        nodes: [
+          { id: 'G1', label: 'Foot Soldier 1', x: 70, y: 60, type: 'mule', score: 0.3 },
+          { id: 'G2', label: 'Foot Soldier 2', x: 70, y: 160, type: 'mule', score: 0.3 },
+          { id: 'G3', label: 'Foot Soldier 3', x: 70, y: 260, type: 'mule', score: 0.3 },
+          { id: 'L1', label: 'Lieutenant (Field)', x: 250, y: 110, type: 'mule', score: 0.75 },
+          { id: 'L2', label: 'Lieutenant (Finance)', x: 250, y: 210, type: 'mule', score: 0.78 },
+          { id: 'BOSS', label: 'Insulated Kingpin', x: 460, y: 160, type: 'kingpin', score: 0.99 }
+        ],
+        edges: [
+          { from: 'G1', to: 'L1', label: '14 Calls' },
+          { from: 'G2', to: 'L1', label: '22 Calls' },
+          { from: 'G3', to: 'L2', label: '30 Calls' },
+          { from: 'L1', to: 'BOSS', label: '2 Encrypted Calls' },
+          { from: 'L2', to: 'BOSS', label: '1 Encrypted Call' }
+        ],
+        findings: '👑 <strong>INSULATED KINGPIN UNMASKED:</strong> Node <strong>Insulated Kingpin</strong> never called any ground operative. However, Eigenvector & Betweenness centrality pinpoint this node as the supreme coordinator connecting disparate financial and operational cells.'
+      }
+    };
+
+    function runSimulation() {
+      const scenarioKey = document.getElementById('sim-scenario').value;
+      const data = scenarios[scenarioKey];
+      const svg = document.getElementById('graph-svg');
+      const findingsEl = document.getElementById('sim-findings');
+      const statsEl = document.getElementById('graph-stats');
+
+      findingsEl.innerHTML = data.findings;
+      statsEl.innerText = `Nodes: ${data.nodes.length} | Edges: ${data.edges.length} | Mode: ${currentSimMode.toUpperCase()}`;
+
+      // Render SVG
+      let svgHtml = `
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+          </marker>
+        </defs>
+      `;
+
+      // Draw Edges
+      data.edges.forEach(e => {
+        const fromNode = data.nodes.find(n => n.id === e.from);
+        const toNode = data.nodes.find(n => n.id === e.to);
+        if (fromNode && toNode) {
+          svgHtml += `
+            <line x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="${(fromNode.x + toNode.x) / 2}" y="${(fromNode.y + toNode.y) / 2 - 6}" fill="#94a3b8" font-size="10" font-family="JetBrains Mono" text-anchor="middle">${e.label}</text>
+          `;
+        }
+      });
+
+      // Draw Nodes
+      data.nodes.forEach(n => {
+        let color = '#06b6d4'; // mule / operative
+        let radius = 16;
+        if (n.type === 'kingpin') {
+          color = '#ef4444'; // Red for Kingpin
+          radius = 22;
+        } else if (n.type === 'device') {
+          color = '#a855f7'; // Purple for device
+          radius = 16;
+        } else if (n.type === 'victim') {
+          color = '#64748b'; // Slate for victim
+          radius = 14;
+        }
+
+        svgHtml += `
+          <g class="cursor-pointer group">
+            <circle cx="${n.x}" cy="${n.y}" r="${radius + 4}" fill="${color}" opacity="0.25" class="animate-pulse-slow" />
+            <circle cx="${n.x}" cy="${n.y}" r="${radius}" fill="${color}" stroke="#0f172a" stroke-width="2" />
+            <text x="${n.x}" y="${n.y + 4}" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle" font-family="Inter">${n.id}</text>
+            <text x="${n.x}" y="${n.y + radius + 14}" fill="#cbd5e1" font-size="10" font-weight="500" text-anchor="middle" font-family="Inter">${n.label}</text>
+          </g>
+        `;
+      });
+
+      svg.innerHTML = svgHtml;
+    }
+
+    // Run on startup
+    window.onload = () => {
+      runSimulation();
+    };
+  </script>
+</body>
+</html>

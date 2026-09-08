@@ -21,7 +21,7 @@ DEFAULT_DATASET = Path(__file__).with_name("synthetic_cdr_sample.json")
 
 CDR_SENSITIVE_FIELDS = ("caller", "callee", "imei", "imsi")
 _REQUIRED_FIELDS = ("caller", "callee", "timestamp", "imei", "imsi")
-_OPTIONAL_FIELDS = ("cell_id",)
+_OPTIONAL_FIELDS = ("cell_id", "subscriber_id")
 
 
 class SyntheticCDRSource:

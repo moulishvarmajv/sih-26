@@ -28,13 +28,20 @@ INVESTIGATOR = Role(
         "SWITCH_AGENCY_CONTEXT",
         "ANALYZE_EVIDENCE",
         "REANALYZE_EVIDENCE",
+        "VIEW_GRAPH",
     ),
 )
 ANALYST = Role(
     id="ROLE-ANALYST",
     name="ANALYST",
     # No REANALYZE_EVIDENCE: analysts read and analyse, they do not reprocess.
-    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT", "ANALYZE_EVIDENCE"),
+    permissions=(
+        "VIEW_CASE",
+        "VIEW_EVIDENCE",
+        "SWITCH_AGENCY_CONTEXT",
+        "ANALYZE_EVIDENCE",
+        "VIEW_GRAPH",
+    ),
 )
 DEV_ROLES = (INVESTIGATOR, ANALYST)
 

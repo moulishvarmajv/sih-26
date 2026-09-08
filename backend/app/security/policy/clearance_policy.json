@@ -18,11 +18,17 @@
       "caller",
       "callee",
       "imei",
-      "imsi"
+      "imsi",
+      "msisdn",
+      "raw_caller",
+      "raw_callee"
     ],
     "partial_mask_fields": [
       "caller",
-      "callee"
+      "callee",
+      "msisdn",
+      "raw_caller",
+      "raw_callee"
     ]
   }
 }

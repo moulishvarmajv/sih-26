@@ -1,28 +1,56 @@
-"""GraphRepository contract for the Knowledge Graph plane (Neo4j).
+"""GraphRepository contract for the Knowledge Graph plane.
 
-Implementations own translation to/from the underlying graph database.
-No caller outside this boundary should construct Cypher directly.
+Persistence and query only. Implementations own Cypher and the driver; callers
+pass and receive the domain objects in `app.core.graph.models` and never see a
+driver type. Authorization, case scoping decisions and audit belong to
+GraphService, above this boundary.
+
+Writes must be idempotent: applying the same nodes and relationships twice
+leaves the graph unchanged.
 """
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol, Sequence
+
+from app.core.graph.models import GraphNode, GraphRelationship, GraphSnapshot
+
+
+class GraphRepositoryError(Exception):
+    """Raised when the graph cannot be read or written."""
+
+
+class GraphUnavailable(GraphRepositoryError):
+    """Raised when the graph database cannot be reached at all."""
 
 
 class GraphRepository(Protocol):
-    def upsert_node(self, label: str, key: str, properties: dict[str, Any]) -> None:
-        """Create or update a node identified by (label, key)."""
+    def is_available(self) -> bool:
+        """Return whether the graph backend is reachable. Never raises."""
         ...
 
-    def upsert_relationship(
-        self,
-        from_key: str,
-        rel_type: str,
-        to_key: str,
-        properties: dict[str, Any] | None = None,
-    ) -> None:
-        """Create or update a relationship between two existing nodes."""
+    def initialize_schema(self) -> None:
+        """Create constraints and indexes if absent.
+
+        Safe to run repeatedly and non-destructive: it never drops or recreates
+        anything, and never touches stored data.
+        """
         ...
 
-    def query(self, cypher: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        """Run a read query and return rows as plain dicts."""
+    def upsert_nodes(self, nodes: Sequence[GraphNode]) -> int:
+        """Merge nodes on their natural key. Returns the number applied."""
+        ...
+
+    def upsert_relationships(self, relationships: Sequence[GraphRelationship]) -> int:
+        """Merge relationships on their observation id. Returns the number applied."""
+        ...
+
+    def fetch_case_graph(
+        self, case_id: str, evidence_ids: Sequence[str] | None = None
+    ) -> GraphSnapshot:
+        """Return the subgraph observed for one case.
+
+        `evidence_ids`, when given, restricts the result to observations derived
+        from those evidence items — the caller has already decided which ones
+        this reader is allowed to see.
+        """
         ...

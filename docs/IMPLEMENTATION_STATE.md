@@ -49,15 +49,52 @@ _Update as phases land — do not let this drift from reality._
 - **Audit**: `EVIDENCE_CREATED`, `EVIDENCE_VERSION_CREATED`, `EVIDENCE_VIEWED`, `EVIDENCE_ANALYSIS_STARTED` / `_COMPLETED` / `_FAILED` / `_REUSED`, `EVIDENCE_REANALYZED`, on top of the access decisions SecurityService already records.
 - **130 tests** in total, 44 of them new.
 
+### Phase 5 — Neo4j knowledge graph foundation
+
+**Architecture.** Neo4j Community runs locally via Docker Compose; the driver is reached only through `Neo4jGraphRepository`. Nothing above the repository sees a driver object — the boundary types are the driver-free dataclasses in `app/core/graph/models.py`. The path is: raw graph → repository → GraphService (authorization, scoping, masking, audit) → API DTOs.
+
+**Node and relationship model.**
+- Nodes: `Person`, `Phone`, `Device`, `Case`, `Evidence`. `Account` and `CellTower` are constrained in the schema but never written yet.
+- Relationships: `Person-[:USES]->Phone`, `Phone-[:INSERTED_IN]->Device`, `Phone-[:CALLED]->Phone`, plus `Evidence-[:BELONGS_TO]->Case` (structural) and `<entity>-[:OBSERVED_IN]->Evidence` (node-level provenance).
+- Natural keys, which every MERGE uses: `Person.person_id`, `Phone.msisdn`, `Device.imei`, `Case.case_id`, `Evidence.evidence_id`, `Account.number`, `CellTower.cgi`.
+
+**Constraints and indexes.** A uniqueness constraint per natural key (which also provides the backing index), plus relationship indexes on `case_id` and `observation_id` for each relationship type. All DDL uses `IF NOT EXISTS`; schema initialization is idempotent and never drops or recreates anything.
+
+**Provenance model.** Provenance lives on observations, not folded into entity nodes: `case_id`, `evidence_id`, `evidence_version_id`, `source_type`, `observed_at`, `trust_class` and `processing_run_id` are written onto each relationship. A Phone seen in three evidence versions keeps three observation edges, so lineage survives reprocessing rather than collapsing into one mutable "latest" record. Relationship writes use `ON CREATE SET` only, so a recorded observation is never rewritten.
+
+**Idempotent ingestion.** Every relationship carries a deterministic `observation_id` = SHA-256 over the source-event data plus the evidence version id — no UUIDs. Re-processing the same version merges onto the same edge (no duplicates); a genuinely new version records a new observation. Nodes MERGE on their natural key. `Evidence-[:BELONGS_TO]->Case` is deliberately version-independent.
+
+**Formatting vs. resolution.** `Phone.msisdn` keys on digits only, so `+91 98 1234 5678` and `919812345678` reach the same node, and the raw text as observed is kept on the observation edge. No country code is guessed. A `Person` node is created only when the source actually reports a subscriber id — deriving a person from a phone number would be entity resolution, which is not implemented.
+
+**Authorization path.** `GET /cases/{case_id}/graph` requires an authenticated session and an active agency context. GraphService authorizes case access, then authorizes *each* evidence item in the case: evidence the reader may not see is excluded from the query scope rather than filtered out of the result, and a PARTIAL decision masks graph identifiers (`Phone.msisdn`, `Device.imei`, `imsi`, raw values) using the same privacy policy that masks the evidence view. Node ids in responses are hashed, so a masked node still has a distinct, usable identity. Unknown and unauthorized cases return the same code.
+
+**Availability.** The driver is imported lazily, so the application imports, starts and serves every non-graph route when the `neo4j` package or server is absent — verified with the package blocked. Only graph operations fail, with `GRAPH_UNAVAILABLE` (503).
+
+**Audit.** `GRAPH_INGESTION_STARTED` / `_COMPLETED` / `_FAILED`, `GRAPH_QUERY_EXECUTED`, `GRAPH_ACCESS_ALLOWED`, `GRAPH_ACCESS_DENIED` — all through the existing EventStore, with correlation ids taken from the authorization decision.
+
+**Tests.** 174 passing (44 new), plus 8 Neo4j integration tests that skip unless a server is reachable.
+
 ## In progress
 
-Nothing. Phase 4 is complete and committed.
+Nothing. Phase 5 is complete and committed.
+
+## Explicitly NOT implemented
+
+These are named because the graph exists now and it would be easy to assume more of it than is true:
+
+- **Entity resolution is NOT implemented.** Nodes are keyed on identifiers as observed (after formatting canonicalisation only). Nothing decides that two different identifiers are the same real-world entity, and no Person is inferred from a phone number.
+- **Graph analytics are NOT implemented.** No centrality, community detection, path finding, or link prediction.
+- **IMEI/IMSI analytics are NOT implemented.** The `INSERTED_IN` edges record which SIM was seen in which handset, but nothing analyses SIM-swapping or hardware hopping.
+- **Tower / spatio-temporal analytics are NOT implemented.** `cell_id` is carried as a property; there is no CellTower node, no geofencing and no tower-dump intersection.
+- **The Evidence Navigator is NOT implemented.**
+- **Frontend graph visualization is NOT implemented.** The DTOs are shaped for a future Cytoscape client; no UI exists.
+- **Blockchain / integrity anchoring is NOT implemented.** Per-version SHA-256 exists as integrity metadata only; no chaining, signing or anchoring, and no admissibility claim.
 
 ## Next — exactly one subsystem
 
-**Knowledge graph ingestion** (`app/core/graph/`): a real `GraphRepository` against a local Neo4j instance (the compose file already provisions one), and a mapping from a CDR `AnalysisResult` into PERSON/PHONE/DEVICE nodes and CALLED/USES relationships — with the trust classification carried onto every node and edge. Requires adding the `neo4j` driver to `requirements.txt`.
+**Deterministic entity resolution** (`app/core/graph/`): decide when two observed identifiers denote the same entity, as an explicit, reviewable step that writes `INFERRED` (never `OBSERVED`) links and retains the evidence supporting each merge. This is the piece that turns a graph of identifiers into a graph of entities, and it must not be smuggled into ingestion.
 
-Do not start entity resolution, graph analytics, the navigator, the frontend, or blockchain work before that.
+Do not start graph analytics, the navigator, the frontend, or blockchain work before that.
 
 ## Known limitations
 
@@ -75,9 +112,11 @@ Do not start entity resolution, graph analytics, the navigator, the frontend, or
 - **Staleness is direct-only.** A new evidence version marks that evidence's own results STALE. There is no dependency graph, so a result derived from *other* evidence is not invalidated transitively — `mark_result_state` is the extension point.
 - **No COMPARE operation and no REQUEST ACCESS workflow yet**; versions and results are retained so both can be built on top.
 - **Analysis runs synchronously** inside the request. The asyncio DAG `TaskExecutor` is still an unimplemented contract.
-- **No Neo4j ingestion, no frontend.**
+- **Graph ingestion has no HTTP trigger.** `GraphService.ingest_case_evidence` is called in-process; there is no endpoint or scheduled job that projects evidence into the graph yet.
+- **The graph is not incrementally maintained.** Ingestion re-projects a case's current evidence; deleting or superseding evidence does not retract observations already written.
+- **One graph mapper** (CDR). FIR, financial and ANPR sources have no mapping.
+- **No frontend.**
 - **No lint/type tooling** (ruff/mypy) is configured in the repo; validation is the test suite plus import checks.
-- No Neo4j driver in `requirements.txt` yet — needed before `GraphRepository` gets a real implementation.
 
 ## Architecture notes carried forward
 

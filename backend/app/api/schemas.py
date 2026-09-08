@@ -107,6 +107,38 @@ class AnalysisResultResponse(BaseModel):
     payload: dict | None
 
 
+class GraphProvenanceDTO(BaseModel):
+    evidence_id: str
+    evidence_version_id: str
+    source_type: str
+    observed_at: str
+    trust_class: str
+    processing_run_id: str | None = None
+
+
+class GraphNodeDTO(BaseModel):
+    id: str  # opaque and stable; never the raw key, which may be masked
+    label: str
+    properties: dict
+
+
+class GraphRelationshipDTO(BaseModel):
+    id: str  # the observation id: deterministic, so re-ingestion does not change it
+    type: str
+    source: str
+    target: str
+    properties: dict
+    provenance: GraphProvenanceDTO | None = None
+
+
+class GraphResponse(BaseModel):
+    case_id: str
+    nodes: list[GraphNodeDTO]
+    relationships: list[GraphRelationshipDTO]
+    masked_properties: list[str]
+    excluded_evidence_count: int
+
+
 class ContextResponse(BaseModel):
     agency_id: str
     agency_name: str

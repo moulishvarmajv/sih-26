@@ -23,7 +23,9 @@ from app.core.domain.agency import AgencyContext
 from app.core.domain.identity import User
 from app.core.evidence.analysis import CdrSummaryAnalyzer
 from app.core.evidence.service import EvidenceService
+from app.core.graph.service import GraphService
 from app.infrastructure.local_object_store import LocalFileEvidenceObjectStore
+from app.infrastructure.neo4j_graph_repository import Neo4jGraphRepository
 from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
 from app.infrastructure.sqlite_event_store import SQLiteEventStore
 from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
@@ -125,6 +127,29 @@ def get_evidence_service() -> EvidenceService:
 
 
 @lru_cache(maxsize=1)
+def get_graph_repository() -> Neo4jGraphRepository:
+    """Constructed eagerly, connected lazily: no Neo4j round-trip at startup."""
+    return Neo4jGraphRepository(
+        uri=settings.NEO4J_URI,
+        user=settings.NEO4J_USER,
+        password=settings.NEO4J_PASSWORD,
+        database=settings.NEO4J_DATABASE,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_graph_service() -> GraphService:
+    return GraphService(
+        graph_repository=get_graph_repository(),
+        evidence_repository=get_evidence_repository(),
+        object_store=get_evidence_object_store(),
+        security=get_security_service(),
+        event_store=get_event_store(),
+        privacy=get_security_policy().privacy,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_security_service() -> SecurityService:
     policy = get_security_policy()
     return SecurityService(
@@ -150,6 +175,8 @@ CACHED_PROVIDERS = (
     get_evidence_repository,
     get_evidence_object_store,
     get_evidence_service,
+    get_graph_repository,
+    get_graph_service,
 )
 
 

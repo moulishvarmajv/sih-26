@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "clearance": {
+    "levels": [
+      { "code": "L1", "name": "INTERNAL", "rank": 1 },
+      { "code": "L2", "name": "CONFIDENTIAL", "rank": 2 },
+      { "code": "L3", "name": "RESTRICTED", "rank": 3 }
+    ],
+    "default_required_level": "L3"
+  },
+  "privacy": {
+    "unmask_minimum_level": "L3",
+    "maskable_fields": [
+      "subscriber_name",
+      "subscriber_address",
+      "account_number",
+      "national_id_ref"
+    ]
+  }
+}

@@ -19,11 +19,12 @@ from app.core.domain.authorization import AuthorizationDecision, AuthorizationEf
 from app.core.domain.case import Case
 from app.core.domain.identity import Clearance, User
 from app.core.evidence.models import EvidenceRecord
-from app.infrastructure.clock import parse_iso, utc_now_iso
+from app.infrastructure.clock import utc_now_iso
 from app.infrastructure.logging import current_correlation_id
 from app.security.authorization.engine import AuthorizationEngine
 from app.security.authorization.models import AuthorizationFacts, AuthorizationRequest
 from app.security.clearance.policy import ClearancePolicy
+from app.security.clearance.verification import is_expired
 from app.security.grants import AccessGrantRepository
 from app.security.roles.permissions import role_permits
 
@@ -197,12 +198,7 @@ class SecurityService:
         )
 
     def _is_expired(self, clearance: Clearance | None) -> bool:
-        if clearance is None or clearance.expires_at is None:
-            return False
-        try:
-            return parse_iso(clearance.expires_at) <= parse_iso(self._clock())
-        except ValueError:
-            return True  # an unparseable expiry is treated as expired
+        return is_expired(clearance, self._clock())
 
     def _is_escalated(self, held: str | None, claimed: str) -> bool:
         if held is None:

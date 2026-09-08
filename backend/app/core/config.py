@@ -1,5 +1,11 @@
+import logging
+import secrets
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "SHADOW-INTEL"
@@ -7,13 +13,17 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"  # development | staging | production
 
-    # Security & CORS
-    SECRET_KEY: str = "sih-2026-shadow-intel-super-secret-key-mha"
+    # Security & CORS.
+    # SECRET_KEY must come from the environment. Outside production an ephemeral
+    # one is generated per process, so no usable secret is ever committed and
+    # local development still works with no setup.
+    SECRET_KEY: str = ""
+    # No "*" here: wildcard origins combined with credentialed requests would
+    # expose session bearer tokens to any site.
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
-        "*"
     ]
 
     # Graph & Storage Settings
@@ -28,7 +38,11 @@ class Settings(BaseSettings):
     # Flight Recorder event store — local SQLite, no managed DB
     EVENT_STORE_PATH: str = "data/event_store.db"
 
-    # JWT placeholder configuration (authentication not yet implemented)
+    # Local identity store: user accounts, roles and sessions
+    IDENTITY_DB_PATH: str = "data/identity.db"
+    SESSION_TTL_MINUTES: int = 60
+
+    # JWT placeholder configuration (sessions currently use opaque bearer tokens)
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -44,6 +58,20 @@ class Settings(BaseSettings):
     # Blockchain / Cryptography Settings
     BLOCKCHAIN_NETWORK: str = "Ethereum / Hyperledger Besu (Local / Testnet)"
     ENABLE_MOCK_LEDGER: bool = True
+
+    @model_validator(mode="after")
+    def _require_secret_key(self) -> "Settings":
+        if self.SECRET_KEY:
+            return self
+        if self.ENVIRONMENT == "production":
+            raise ValueError("SECRET_KEY must be set in the environment for production")
+        self.SECRET_KEY = secrets.token_urlsafe(32)
+        logger.warning(
+            "SECRET_KEY is unset; generated an ephemeral key for ENVIRONMENT=%s. "
+            "Set SECRET_KEY in the environment for anything persistent.",
+            self.ENVIRONMENT,
+        )
+        return self
 
     class Config:
         case_sensitive = True

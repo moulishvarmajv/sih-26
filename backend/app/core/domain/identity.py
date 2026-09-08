@@ -30,7 +30,10 @@ class Clearance:
 
 @dataclass(frozen=True)
 class User:
+    """An authenticated principal. Carries no password material, ever."""
+
     id: str
     username: str
     roles: tuple[Role, ...] = ()
     clearance: Clearance | None = None
+    display_name: str | None = None

@@ -50,7 +50,9 @@ class FlightRecorderEvent(str, Enum):
     ACCESS_REQUEST_CREATED = "ACCESS_REQUEST_CREATED"
     ACCESS_REQUEST_APPROVED = "ACCESS_REQUEST_APPROVED"
     ACCESS_REQUEST_REVOKED = "ACCESS_REQUEST_REVOKED"
-    # Denial/decision counterparts, so every authorization outcome is auditable.
+    # Denial/decision counterparts, so every authentication and authorization
+    # outcome is auditable.
+    LOGIN_FAILED = "LOGIN_FAILED"
     AGENCY_CONTEXT_DENIED = "AGENCY_CONTEXT_DENIED"
     CASE_ACCESS_ALLOWED = "CASE_ACCESS_ALLOWED"
     CASE_ACCESS_DENIED = "CASE_ACCESS_DENIED"

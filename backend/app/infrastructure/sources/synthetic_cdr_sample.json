@@ -1,0 +1,73 @@
+{
+  "dataset": "SYNTHETIC-CDR-SAMPLE-1",
+  "note": "Synthetic records for lifecycle testing only. Not real subscriber data.",
+  "exports": [
+    {
+      "export_id": "CDR-EXPORT-001",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-001",
+      "records": [
+        {
+          "caller": "+919876543210",
+          "callee": "+919812345678",
+          "timestamp": "2026-02-01T09:15:00+05:30",
+          "duration_seconds": 142,
+          "imei": "356938035643809",
+          "imsi": "404450123456789",
+          "cell_id": "MH-PUNE-0442"
+        },
+        {
+          "caller": "+919876543210",
+          "callee": "+919812345678",
+          "timestamp": "2026-02-01T09:15:00+05:30",
+          "duration_seconds": 142,
+          "imei": "356938035643809",
+          "imsi": "404450123456789",
+          "cell_id": "MH-PUNE-0442"
+        },
+        {
+          "caller": "919876543210",
+          "callee": "+91 98 1234 5678",
+          "timestamp": "2026-02-01T11:02:13+05:30",
+          "duration_seconds": 37,
+          "imei": "356938035643809",
+          "imsi": "404450987654321",
+          "cell_id": "MH-PUNE-0442"
+        },
+        {
+          "caller": "+919812345678",
+          "callee": "+919900112233",
+          "timestamp": "2026-02-01T14:47:51+05:30",
+          "duration_seconds": 0,
+          "imei": "490154203237518",
+          "imsi": "404450555666777",
+          "cell_id": "MH-PUNE-0117"
+        },
+        {
+          "caller": "+919900112233",
+          "callee": "+919876543210",
+          "timestamp": "2026-02-02T08:03:00+05:30",
+          "duration_seconds": 611,
+          "imei": "490154203237518",
+          "imsi": "404450555666777"
+        }
+      ]
+    },
+    {
+      "export_id": "CDR-EXPORT-002",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-001",
+      "records": [
+        {
+          "caller": "+919900112233",
+          "callee": "+919812345678",
+          "timestamp": "2026-02-03T19:30:00+05:30",
+          "duration_seconds": 95,
+          "imei": "352099001761481",
+          "imsi": "404450444333222",
+          "cell_id": "MH-NAGPUR-0031"
+        }
+      ]
+    }
+  ]
+}

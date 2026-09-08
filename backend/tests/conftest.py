@@ -4,7 +4,7 @@ import pytest
 from app.core.domain.agency import Agency, AgencyContext
 from app.core.domain.case import Case
 from app.core.domain.identity import Clearance, Role, User
-from app.core.evidence.models import EvidenceRecord, TrustClassification
+from app.core.evidence.models import EvidenceRecord, EvidenceState, TrustClassification
 from app.infrastructure.sqlite_event_store import SQLiteEventStore
 from app.security.authorization.policy_engine import ClearanceAuthorizationEngine
 from app.security.grants import InMemoryAccessGrantRepository
@@ -17,12 +17,19 @@ FINANCIAL_CRIME = Agency(id="FINANCIAL_CRIME", name="Financial Crime Unit", plug
 INVESTIGATOR = Role(
     id="ROLE-INVESTIGATOR",
     name="INVESTIGATOR",
-    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT"),
+    permissions=(
+        "VIEW_CASE",
+        "VIEW_EVIDENCE",
+        "SWITCH_AGENCY_CONTEXT",
+        "ANALYZE_EVIDENCE",
+        "REANALYZE_EVIDENCE",
+    ),
 )
 ANALYST = Role(
     id="ROLE-ANALYST",
     name="ANALYST",
-    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT"),
+    # No REANALYZE_EVIDENCE: analysts read and analyse, they do not reprocess.
+    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT", "ANALYZE_EVIDENCE"),
 )
 
 
@@ -102,8 +109,9 @@ def make_evidence(
         id=evidence_id,
         case_id=case_id,
         source_id="SRC-CDR",
+        source_record_id="CDR-EXPORT-001",
         classification=TrustClassification.OBSERVED,
-        content_hash="0" * 64,
+        state=EvidenceState.AVAILABLE,
         created_at="2026-02-01T00:00:00+00:00",
         security_level=security_level,
         sensitive_fields=sensitive_fields,

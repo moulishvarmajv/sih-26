@@ -14,7 +14,15 @@
       "subscriber_name",
       "subscriber_address",
       "account_number",
-      "national_id_ref"
+      "national_id_ref",
+      "caller",
+      "callee",
+      "imei",
+      "imsi"
+    ],
+    "partial_mask_fields": [
+      "caller",
+      "callee"
     ]
   }
 }

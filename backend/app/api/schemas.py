@@ -55,6 +55,58 @@ class ContextSwitchRequest(BaseModel):
     unit: str | None = Field(default=None, max_length=64)
 
 
+class EvidenceSummary(BaseModel):
+    evidence_id: str
+    case_id: str
+    source_id: str
+    source_record_id: str
+    classification: str
+    state: str
+    security_level: str | None
+    created_at: str
+
+
+class EvidenceListResponse(BaseModel):
+    case_id: str
+    evidence: list[EvidenceSummary]
+
+
+class EvidenceVersionResponse(BaseModel):
+    version_id: str
+    version_number: int
+    content_hash: str
+    source_reference: str
+    ingested_at: str
+    state: str
+
+
+class EvidenceVersionsResponse(BaseModel):
+    evidence_id: str
+    versions: list[EvidenceVersionResponse]
+
+
+class EvidenceViewResponse(BaseModel):
+    evidence: EvidenceSummary
+    version: EvidenceVersionResponse
+    payload: dict  # already masked server-side when the decision was PARTIAL
+    decision: str
+    masked_fields: list[str]
+
+
+class AnalysisResultResponse(BaseModel):
+    result_id: str
+    run_id: str
+    evidence_id: str
+    evidence_version_id: str
+    task_type: str
+    classification: str
+    state: str
+    output_hash: str | None
+    created_at: str
+    reused: bool
+    payload: dict | None
+
+
 class ContextResponse(BaseModel):
     agency_id: str
     agency_name: str

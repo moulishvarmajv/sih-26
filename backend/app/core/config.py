@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     IDENTITY_DB_PATH: str = "data/identity.db"
     SESSION_TTL_MINUTES: int = 60
 
+    # Investigation state: cases and evidence metadata (SQLite), with raw
+    # evidence payloads kept out of the database in a local object store
+    INVESTIGATION_DB_PATH: str = "data/investigation.db"
+    EVIDENCE_OBJECT_ROOT: str = "data/evidence_objects"
+
     # JWT placeholder configuration (sessions currently use opaque bearer tokens)
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

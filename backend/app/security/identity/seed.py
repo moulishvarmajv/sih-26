@@ -22,12 +22,19 @@ from app.security.identity.user_store import SQLiteUserStore
 INVESTIGATOR = Role(
     id="ROLE-INVESTIGATOR",
     name="INVESTIGATOR",
-    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT"),
+    permissions=(
+        "VIEW_CASE",
+        "VIEW_EVIDENCE",
+        "SWITCH_AGENCY_CONTEXT",
+        "ANALYZE_EVIDENCE",
+        "REANALYZE_EVIDENCE",
+    ),
 )
 ANALYST = Role(
     id="ROLE-ANALYST",
     name="ANALYST",
-    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT"),
+    # No REANALYZE_EVIDENCE: analysts read and analyse, they do not reprocess.
+    permissions=("VIEW_CASE", "VIEW_EVIDENCE", "SWITCH_AGENCY_CONTEXT", "ANALYZE_EVIDENCE"),
 )
 DEV_ROLES = (INVESTIGATOR, ANALYST)
 

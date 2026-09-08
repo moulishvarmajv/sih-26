@@ -16,8 +16,12 @@ class ApiError(str, Enum):
     SESSION_EXPIRED = "SESSION_EXPIRED"
     AGENCY_ACCESS_DENIED = "AGENCY_ACCESS_DENIED"
     CLEARANCE_INVALID = "CLEARANCE_INVALID"
-    AGENCY_UNKNOWN = "AGENCY_UNKNOWN"
     NO_ACTIVE_CONTEXT = "NO_ACTIVE_CONTEXT"
+    # Unknown and unauthorized resources return the same code on purpose, so a
+    # caller cannot enumerate cases or evidence they have no access to.
+    CASE_ACCESS_DENIED = "CASE_ACCESS_DENIED"
+    EVIDENCE_ACCESS_DENIED = "EVIDENCE_ACCESS_DENIED"
+    ANALYSIS_NOT_AVAILABLE = "ANALYSIS_NOT_AVAILABLE"
 
 
 def http_error(error: ApiError, status_code: int) -> HTTPException:

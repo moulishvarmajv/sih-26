@@ -21,7 +21,12 @@ from app.api.errors import ApiError, unauthorized
 from app.core.config import settings
 from app.core.domain.agency import AgencyContext
 from app.core.domain.identity import User
+from app.core.evidence.analysis import CdrSummaryAnalyzer
+from app.core.evidence.service import EvidenceService
+from app.infrastructure.local_object_store import LocalFileEvidenceObjectStore
+from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
 from app.infrastructure.sqlite_event_store import SQLiteEventStore
+from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
 from app.security.agencies import InMemoryAgencyDirectory
 from app.security.authentication import (
     AuthenticationService,
@@ -93,6 +98,33 @@ def get_authentication_service() -> AuthenticationService:
 
 
 @lru_cache(maxsize=1)
+def get_case_repository() -> SQLiteCaseRepository:
+    return SQLiteCaseRepository(settings.INVESTIGATION_DB_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_evidence_repository() -> SQLiteEvidenceRepository:
+    return SQLiteEvidenceRepository(settings.INVESTIGATION_DB_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_evidence_object_store() -> LocalFileEvidenceObjectStore:
+    return LocalFileEvidenceObjectStore(settings.EVIDENCE_OBJECT_ROOT)
+
+
+@lru_cache(maxsize=1)
+def get_evidence_service() -> EvidenceService:
+    return EvidenceService(
+        repository=get_evidence_repository(),
+        object_store=get_evidence_object_store(),
+        security=get_security_service(),
+        event_store=get_event_store(),
+        privacy=get_security_policy().privacy,
+        analyzers=(CdrSummaryAnalyzer(),),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_security_service() -> SecurityService:
     policy = get_security_policy()
     return SecurityService(
@@ -114,6 +146,10 @@ CACHED_PROVIDERS = (
     get_identity_provider,
     get_authentication_service,
     get_security_service,
+    get_case_repository,
+    get_evidence_repository,
+    get_evidence_object_store,
+    get_evidence_service,
 )
 
 

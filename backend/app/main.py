@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.context import router as context_router
+from app.api.routes.evidence import router as evidence_router
 from app.api.routes.health import router as health_router
 from app.core.config import settings
 from app.infrastructure.logging import CorrelationIdMiddleware, configure_logging
@@ -30,3 +31,4 @@ app.add_middleware(CorrelationIdMiddleware)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(context_router)
+app.include_router(evidence_router)

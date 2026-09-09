@@ -23,6 +23,8 @@ from app.api import dependencies as deps
 from app.core.analytics.policy import load_analytics_policy
 from app.core.analytics.service import GraphAnalyticsService
 from app.core.audit.event_store import EventStore
+from app.core.debt.policy import load_debt_policy
+from app.core.debt.service import EvidenceDebtService
 from app.core.evidence.analysis import CdrSummaryAnalyzer
 from app.core.evidence.service import EvidenceService
 from app.core.graph.repository import GraphRepository
@@ -32,6 +34,7 @@ from app.core.resolution.service import EntityResolutionService
 from app.infrastructure.local_object_store import LocalFileEvidenceObjectStore
 from app.infrastructure.sqlite_analytics_repository import SQLiteAnalyticsRepository
 from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
+from app.infrastructure.sqlite_debt_repository import SQLiteEvidenceDebtRepository
 from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
 from app.infrastructure.sqlite_resolution_repository import SQLiteResolutionRepository
 from app.main import app
@@ -65,6 +68,7 @@ class ApiHarness:
     evidence_repo: SQLiteEvidenceRepository
     resolution_repo: SQLiteResolutionRepository
     analytics_repo: SQLiteAnalyticsRepository
+    debt_repo: SQLiteEvidenceDebtRepository
     objects: LocalFileEvidenceObjectStore
     graph_repo: GraphRepository
     user_store: SQLiteUserStore
@@ -77,6 +81,7 @@ class ApiHarness:
     graph_service: GraphService
     resolution_service: EntityResolutionService
     analytics_service: GraphAnalyticsService
+    debt_service: EvidenceDebtService
 
     def login(self, username: str = "dev.investigator") -> dict[str, str]:
         """Authenticate and return bearer headers, with no agency context selected."""
@@ -104,6 +109,7 @@ class ApiHarness:
             self.evidence_repo,
             self.resolution_repo,
             self.analytics_repo,
+            self.debt_repo,
         ):
             store.close()
 
@@ -129,6 +135,7 @@ def build_api_harness(
     evidence_repo = SQLiteEvidenceRepository(tmp_path / "investigation.db")
     resolution_repo = SQLiteResolutionRepository(tmp_path / "investigation.db")
     analytics_repo = SQLiteAnalyticsRepository(tmp_path / "investigation.db")
+    debt_repo = SQLiteEvidenceDebtRepository(tmp_path / "investigation.db")
     objects = LocalFileEvidenceObjectStore(tmp_path / "objects")
     graph_repo = graph_repository or InMemoryGraphRepository()
 
@@ -171,6 +178,16 @@ def build_api_harness(
         event_store=event_store,
         policy=load_analytics_policy(),
     )
+    debt_service = EvidenceDebtService(
+        debt_repository=debt_repo,
+        evidence_repository=evidence_repo,
+        resolution_repository=resolution_repo,
+        analytics_repository=analytics_repo,
+        object_store=objects,
+        security=security,
+        event_store=event_store,
+        policy=load_debt_policy(),
+    )
     authentication = AuthenticationService(
         identity_provider=LocalIdentityProvider(user_store, hasher),
         session_store=session_store,
@@ -198,6 +215,8 @@ def build_api_harness(
             deps.get_resolution_service: lambda: resolution_service,
             deps.get_analytics_repository: lambda: analytics_repo,
             deps.get_analytics_service: lambda: analytics_service,
+            deps.get_debt_repository: lambda: debt_repo,
+            deps.get_debt_service: lambda: debt_service,
         }
     )
 
@@ -207,6 +226,7 @@ def build_api_harness(
         evidence_repo=evidence_repo,
         resolution_repo=resolution_repo,
         analytics_repo=analytics_repo,
+        debt_repo=debt_repo,
         objects=objects,
         graph_repo=graph_repo,
         user_store=user_store,
@@ -219,4 +239,5 @@ def build_api_harness(
         graph_service=graph_service,
         resolution_service=resolution_service,
         analytics_service=analytics_service,
+        debt_service=debt_service,
     )

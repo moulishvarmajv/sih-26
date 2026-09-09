@@ -409,3 +409,110 @@ class AnalyticsRunResponse(BaseModel):
     signal_count: int
     excluded_evidence_count: int
     truncated: bool
+
+
+class DebtWeightingDTO(BaseModel):
+    """The factors behind one item's contribution, so no number is unexplained."""
+
+    category_weight: float
+    severity_multiplier: float
+    scope_factor: float
+    criticality_factor: float
+    affected_scope: int
+    weighted_contribution: float
+
+
+class DebtSubjectDTO(BaseModel):
+    subject_type: str
+    reference: str
+    entity_refs: list[str]
+
+
+class EvidenceDebtItemDTO(BaseModel):
+    debt_id: str
+    case_id: str
+    category: str
+    severity: str
+    status: str
+    reason: str
+    subject: DebtSubjectDTO
+    weighting: DebtWeightingDTO
+    explanation: dict
+    supporting_evidence_ids: list[str]
+    related_resolution_ids: list[str]
+    related_finding_ids: list[str]
+    actionable: bool
+    priority: int
+    blocking_reason: str
+    required_capability: str | None
+    created_at: str
+    calculated_at: str
+    version: int
+    status_changed_at: str | None = None
+    status_changed_by: str | None = None
+    status_reason: str | None = None
+    policy_version: str
+    debt_engine_version: str
+
+
+class DebtBreakdownDTO(BaseModel):
+    category: str
+    item_count: int
+    weighted_contribution: float
+    share: float
+    severity_counts: dict[str, int]
+
+
+class DebtChangeDTO(BaseModel):
+    """What moved since the previous recorded calculation for the same scope."""
+
+    previous_snapshot_id: str | None
+    previous_total: float
+    delta: float
+    resolved_debt_ids: list[str]
+    introduced_debt_ids: list[str]
+    unchanged_count: int
+
+
+class EvidenceDebtResponse(BaseModel):
+    snapshot_id: str
+    case_id: str
+    calculated_at: str
+    total_debt: float
+    normalized_debt: float
+    band: str
+    item_count: int
+    evidence_in_scope: int
+    excluded_evidence_count: int
+    persisted: bool
+    breakdown: list[DebtBreakdownDTO]
+    top_items: list[EvidenceDebtItemDTO]
+    change: DebtChangeDTO
+    policy_version: str
+    debt_engine_version: str
+
+
+class EvidenceDebtBreakdownResponse(BaseModel):
+    case_id: str
+    total_debt: float
+    normalized_debt: float
+    band: str
+    item_count: int
+    breakdown: list[DebtBreakdownDTO]
+    policy_version: str
+    debt_engine_version: str
+
+
+class EvidenceDebtItemListResponse(BaseModel):
+    case_id: str
+    item_count: int
+    items: list[EvidenceDebtItemDTO]
+
+
+class EvidenceDebtItemDetailResponse(BaseModel):
+    item: EvidenceDebtItemDTO
+    history: list[EvidenceDebtItemDTO]
+
+
+class DebtAcknowledgeRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=512)

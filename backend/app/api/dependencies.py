@@ -25,6 +25,8 @@ from app.core.evidence.analysis import CdrSummaryAnalyzer
 from app.core.evidence.service import EvidenceService
 from app.core.analytics.policy import AnalyticsPolicy, load_analytics_policy
 from app.core.analytics.service import GraphAnalyticsService
+from app.core.debt.policy import EvidenceDebtPolicy, load_debt_policy
+from app.core.debt.service import EvidenceDebtService
 from app.core.graph.service import GraphService
 from app.core.resolution.policy import ResolutionPolicy, load_resolution_policy
 from app.core.resolution.service import EntityResolutionService
@@ -34,6 +36,7 @@ from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
 from app.infrastructure.sqlite_event_store import SQLiteEventStore
 from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
 from app.infrastructure.sqlite_analytics_repository import SQLiteAnalyticsRepository
+from app.infrastructure.sqlite_debt_repository import SQLiteEvidenceDebtRepository
 from app.infrastructure.sqlite_resolution_repository import SQLiteResolutionRepository
 from app.security.agencies import InMemoryAgencyDirectory
 from app.security.authentication import (
@@ -201,6 +204,30 @@ def get_analytics_service() -> GraphAnalyticsService:
 
 
 @lru_cache(maxsize=1)
+def get_debt_policy() -> EvidenceDebtPolicy:
+    return load_debt_policy()
+
+
+@lru_cache(maxsize=1)
+def get_debt_repository() -> SQLiteEvidenceDebtRepository:
+    return SQLiteEvidenceDebtRepository(settings.INVESTIGATION_DB_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_debt_service() -> EvidenceDebtService:
+    return EvidenceDebtService(
+        debt_repository=get_debt_repository(),
+        evidence_repository=get_evidence_repository(),
+        resolution_repository=get_resolution_repository(),
+        analytics_repository=get_analytics_repository(),
+        object_store=get_evidence_object_store(),
+        security=get_security_service(),
+        event_store=get_event_store(),
+        policy=get_debt_policy(),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_security_service() -> SecurityService:
     policy = get_security_policy()
     return SecurityService(
@@ -234,6 +261,9 @@ CACHED_PROVIDERS = (
     get_analytics_policy,
     get_analytics_repository,
     get_analytics_service,
+    get_debt_policy,
+    get_debt_repository,
+    get_debt_service,
 )
 
 

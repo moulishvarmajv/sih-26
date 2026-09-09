@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # Graph analytics policy: signal thresholds, weights, windows and limits
     ANALYTICS_POLICY_PATH: str = "app/core/analytics/analytics_policy.json"
 
+    # Evidence debt policy: category weights, severities, expectations and bands
+    DEBT_POLICY_PATH: str = "app/core/debt/debt_policy.json"
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

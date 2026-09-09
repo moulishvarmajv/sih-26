@@ -102,9 +102,23 @@ class SyntheticSubscriberRegisterSource:
             },
             classification=TrustClassification.OBSERVED,
             source_reference=f"{document.get('dataset', 'unknown')}:{register_id}",
-            security_level=self._security_level,
+            # A register may declare its own clearance level, as an export may.
+            # Registers are not uniformly sensitive, and a redaction property is
+            # only provable against evidence a given reader cannot see.
+            security_level=_security_level_of(register, self._security_level),
             sensitive_fields=SUBSCRIBER_SENSITIVE_FIELDS,
         )
+
+
+def _security_level_of(register: Mapping[str, Any], default: str | None) -> str | None:
+    declared = register.get("security_level")
+    if declared is None:
+        return default
+    if not isinstance(declared, str) or not declared.strip():
+        raise EvidenceSourceError(
+            f"register '{register.get('register_id')}' has an invalid 'security_level'"
+        )
+    return declared
 
 
 def normalise_subscriber(entry: Any, register_id: str, index: int) -> dict[str, Any]:

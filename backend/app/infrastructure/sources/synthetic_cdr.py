@@ -80,7 +80,10 @@ class SyntheticCDRSource:
                 "record_count": len(normalised),
                 "records": normalised,
             },
-            classification=TrustClassification.OBSERVED,
+            # What the export says about its own provenance. An operator that
+            # reconstructed records from partial logs is not observing them, and
+            # an adapter must never upgrade what a source declared.
+            classification=_classification_of(export),
             source_reference=f"{document.get('dataset', 'unknown')}:{export_id}",
             # An export may declare its own clearance level. Real exports do not
             # all carry the same sensitivity, and analytics has to be provable
@@ -88,6 +91,24 @@ class SyntheticCDRSource:
             security_level=_security_level_of(export, self._security_level),
             sensitive_fields=CDR_SENSITIVE_FIELDS,
         )
+
+
+def _classification_of(export: Mapping[str, Any]) -> TrustClassification:
+    """The trust class the export declares, defaulting to OBSERVED.
+
+    Trust is permanent and only ever travels downwards here: an export may say
+    its records are DERIVED or INFERRED, and nothing in this adapter can make a
+    lower tier look like a higher one.
+    """
+    declared = export.get("classification")
+    if declared is None:
+        return TrustClassification.OBSERVED
+    try:
+        return TrustClassification(declared)
+    except ValueError as exc:
+        raise EvidenceSourceError(
+            f"export '{export.get('export_id')}' has an unknown 'classification'"
+        ) from exc
 
 
 def _security_level_of(export: Mapping[str, Any], default: str | None) -> str | None:

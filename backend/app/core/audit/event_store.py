@@ -96,6 +96,19 @@ class FlightRecorderEvent(str, Enum):
     ANALYTICS_ACCESS_DENIED = "ANALYTICS_ACCESS_DENIED"
     SIGNAL_CREATED = "SIGNAL_CREATED"
     SIGNAL_REVISED = "SIGNAL_REVISED"
+    # Evidence debt. A calculation reads the other subsystems' recorded state
+    # and writes only debt records, so it has its own lifecycle rather than
+    # borrowing analysis or analytics events.
+    EVIDENCE_DEBT_CALCULATION_STARTED = "EVIDENCE_DEBT_CALCULATION_STARTED"
+    EVIDENCE_DEBT_CALCULATION_COMPLETED = "EVIDENCE_DEBT_CALCULATION_COMPLETED"
+    EVIDENCE_DEBT_CALCULATION_FAILED = "EVIDENCE_DEBT_CALCULATION_FAILED"
+    EVIDENCE_DEBT_CREATED = "EVIDENCE_DEBT_CREATED"
+    EVIDENCE_DEBT_RESOLVED = "EVIDENCE_DEBT_RESOLVED"
+    EVIDENCE_DEBT_REVISED = "EVIDENCE_DEBT_REVISED"
+    #: Not in the original list, and added for the same reason the phase-2
+    #: denial events were: every authorization outcome is auditable, so a
+    #: refused debt read leaves a record rather than nothing.
+    EVIDENCE_DEBT_ACCESS_DENIED = "EVIDENCE_DEBT_ACCESS_DENIED"
 
 
 @dataclass(frozen=True)

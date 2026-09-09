@@ -298,6 +298,145 @@
           "cell_id": "MH-B-07"
         }
       ]
+    },
+    {
+      "export_id": "CDR-EXPORT-DEBT-001",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-004",
+      "note": "The well-supported part of the debt case: one busy number and clean records, plus one handset the operator recorded under two subscriber identities — a disagreement inside a single export.",
+      "records": [
+        {
+          "caller": "+919840500001",
+          "callee": "+919840500002",
+          "timestamp": "2026-03-02T09:00:00+05:30",
+          "duration_seconds": 120,
+          "imei": "359881034512345",
+          "imsi": "404450700000001",
+          "cell_id": "KL-KOCHI-0101",
+          "subscriber_id": "SUB-SYNTH-4001"
+        },
+        {
+          "caller": "+919840500001",
+          "callee": "+919840500003",
+          "timestamp": "2026-03-02T09:10:00+05:30",
+          "duration_seconds": 95,
+          "imei": "359881034512345",
+          "imsi": "404450700000001",
+          "cell_id": "KL-KOCHI-0101",
+          "subscriber_id": "SUB-SYNTH-4001"
+        },
+        {
+          "caller": "+919840500001",
+          "callee": "+919840500004",
+          "timestamp": "2026-03-02T09:20:00+05:30",
+          "duration_seconds": 210,
+          "imei": "359881034512345",
+          "imsi": "404450700000001",
+          "cell_id": "KL-KOCHI-0101",
+          "subscriber_id": "SUB-SYNTH-4001"
+        },
+        {
+          "caller": "+919840500001",
+          "callee": "+919840500005",
+          "timestamp": "2026-03-02T09:30:00+05:30",
+          "duration_seconds": 60,
+          "imei": "359881034512345",
+          "imsi": "404450700000001",
+          "cell_id": "KL-KOCHI-0101",
+          "subscriber_id": "SUB-SYNTH-4001"
+        },
+        {
+          "caller": "+919840500002",
+          "callee": "+919840500006",
+          "timestamp": "2026-03-02T10:05:00+05:30",
+          "duration_seconds": 45,
+          "imei": "358700221144556",
+          "imsi": "404450700000005",
+          "cell_id": "KL-KOCHI-0104"
+        },
+        {
+          "caller": "+919840500007",
+          "callee": "+919840500001",
+          "timestamp": "2026-03-02T11:00:00+05:30",
+          "duration_seconds": 33,
+          "imei": "357000112233445",
+          "imsi": "404450700000002",
+          "cell_id": "KL-KOCHI-0107",
+          "subscriber_id": "SUB-SYNTH-4002"
+        },
+        {
+          "caller": "+919840500001",
+          "callee": "+919840500003",
+          "timestamp": "2026-03-02T09:40:00+05:30",
+          "duration_seconds": 78,
+          "imei": "359881034512345",
+          "imsi": "404450700000009",
+          "cell_id": "KL-KOCHI-0101",
+          "subscriber_id": "SUB-SYNTH-4001"
+        }
+      ]
+    },
+    {
+      "export_id": "CDR-EXPORT-DEBT-RECON",
+      "operator": "SYNTH-TELECOM",
+      "classification": "INFERRED",
+      "case_id": "CASE-004",
+      "note": "An export the operator reconstructed from partial switch logs rather than observed. It declares its own trust class and the adapter carries that through unchanged.",
+      "records": [
+        {
+          "caller": "+919840500001",
+          "callee": "+919840600001",
+          "timestamp": "2026-03-04T15:00:00+05:30",
+          "duration_seconds": 80,
+          "imei": "359881034512345",
+          "imsi": "404450700000001",
+          "cell_id": "KL-KOCHI-0101",
+          "subscriber_id": "SUB-SYNTH-4001"
+        },
+        {
+          "caller": "+919840600001",
+          "callee": "+919840600002",
+          "timestamp": "2026-03-04T15:20:00+05:30",
+          "duration_seconds": 40,
+          "imei": "351000998877665",
+          "imsi": "404450700000003",
+          "cell_id": "KL-KOCHI-0210"
+        }
+      ]
+    },
+    {
+      "export_id": "CDR-EXPORT-DEBT-EXTRA",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-004",
+      "note": "A small separate export. The debt fixture analyses it and then ingests a corrected version, which is what leaves the earlier result stale with nothing having recomputed it.",
+      "records": [
+        {
+          "caller": "+919840800001",
+          "callee": "+919840800002",
+          "timestamp": "2026-03-06T10:00:00+05:30",
+          "duration_seconds": 55,
+          "imei": "352000111222333",
+          "imsi": "404450700000004",
+          "cell_id": "KL-KOCHI-0330"
+        }
+      ]
+    },
+    {
+      "export_id": "CDR-EXPORT-DEBT-CLEAN",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-004",
+      "note": "Deliberately unremarkable: observed, analysed, named by no register entry and disagreeing with nothing. Findings computed from it alone carry no debt, which is what makes the other categories mean something.",
+      "records": [
+        {
+          "caller": "+919841100001",
+          "callee": "+919841100002",
+          "timestamp": "2026-03-08T12:00:00+05:30",
+          "duration_seconds": 143,
+          "imei": "353310041122334",
+          "imsi": "404450700000011",
+          "cell_id": "KL-KOCHI-0512"
+        }
+      ]
     }
   ]
 }

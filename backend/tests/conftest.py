@@ -29,13 +29,17 @@ INVESTIGATOR = Role(
         "REVIEW_ENTITY_RESOLUTION",
         "VIEW_ANALYTICS",
         "RUN_ANALYTICS",
+        "VIEW_EVIDENCE_DEBT",
+        "RECALCULATE_EVIDENCE_DEBT",
+        "ACKNOWLEDGE_EVIDENCE_DEBT",
     ),
 )
 ANALYST = Role(
     id="ROLE-ANALYST",
     name="ANALYST",
-    # No REANALYZE_EVIDENCE and no REVIEW_ENTITY_RESOLUTION: analysts read and
-    # analyse, they neither reprocess evidence nor rule on an identity claim.
+    # No REANALYZE_EVIDENCE, no REVIEW_ENTITY_RESOLUTION and no debt
+    # recalculation or acknowledgement: analysts read and analyse, they neither
+    # reprocess evidence, rule on an identity claim, nor sign off a gap.
     permissions=(
         "VIEW_CASE",
         "VIEW_EVIDENCE",
@@ -45,6 +49,7 @@ ANALYST = Role(
         "RUN_ENTITY_RESOLUTION",
         "VIEW_ENTITY_RESOLUTION",
         "VIEW_ANALYTICS",
+        "VIEW_EVIDENCE_DEBT",
     ),
 )
 

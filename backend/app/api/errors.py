@@ -33,6 +33,10 @@ class ApiError(str, Enum):
     # An entity that is absent and one the reader may not see answer alike, so
     # neither can be distinguished by probing.
     ANALYTICS_ENTITY_NOT_FOUND = "ANALYTICS_ENTITY_NOT_FOUND"
+    DEBT_ACCESS_DENIED = "DEBT_ACCESS_DENIED"
+    # Only reachable once a caller is already authorized to acknowledge in this
+    # case, so it discloses nothing a read of the item list would not.
+    DEBT_ITEM_NOT_FOUND = "DEBT_ITEM_NOT_FOUND"
 
 
 def http_error(error: ApiError, status_code: int) -> HTTPException:
@@ -71,3 +75,6 @@ LOGIN_ERRORS = _documented(status.HTTP_401_UNAUTHORIZED)
 
 #: Analytics answers 404 for an entity that is absent *or* out of scope.
 ANALYTICS_ERRORS = _documented(status.HTTP_404_NOT_FOUND)
+
+#: Acknowledging a debt item that this calculation does not produce.
+DEBT_ERRORS = _documented(status.HTTP_404_NOT_FOUND)

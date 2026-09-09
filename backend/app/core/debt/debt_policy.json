@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "policy_version": "debt-1.0.0",
+  "limits": {
+    "max_items_per_category": 100,
+    "top_items": 10
+  },
+  "categories": {
+    "UNRESOLVED": {
+      "weight": 0.8,
+      "blocking_reason": "AWAITING_ENTITY_RESOLUTION",
+      "required_capability": "RUN_ENTITY_RESOLUTION",
+      "actionable": true
+    },
+    "CONFLICTING": {
+      "weight": 1.0,
+      "blocking_reason": "AWAITING_HUMAN_REVIEW",
+      "required_capability": "REVIEW_ENTITY_RESOLUTION",
+      "actionable": true
+    },
+    "WEAK": {
+      "weight": 0.6,
+      "blocking_reason": "AWAITING_ADDITIONAL_EVIDENCE",
+      "required_capability": null,
+      "actionable": false
+    },
+    "MISSING": {
+      "weight": 0.9,
+      "blocking_reason": "AWAITING_ADDITIONAL_EVIDENCE",
+      "required_capability": "VIEW_EVIDENCE",
+      "actionable": true
+    },
+    "STALE": {
+      "weight": 0.7,
+      "blocking_reason": "AWAITING_REANALYSIS",
+      "required_capability": "REANALYZE_EVIDENCE",
+      "actionable": true
+    },
+    "HUMAN_REVIEW": {
+      "weight": 0.9,
+      "blocking_reason": "AWAITING_HUMAN_REVIEW",
+      "required_capability": "REVIEW_ENTITY_RESOLUTION",
+      "actionable": true
+    },
+    "UNSUPPORTED_FINDING": {
+      "weight": 0.8,
+      "blocking_reason": "AWAITING_ADDITIONAL_EVIDENCE",
+      "required_capability": null,
+      "actionable": false
+    }
+  },
+  "severity_multipliers": {
+    "LOW": 0.5,
+    "MEDIUM": 1.0,
+    "HIGH": 1.5,
+    "CRITICAL": 2.0
+  },
+  "scope": {
+    "saturates_at": 4,
+    "minimum_factor": 0.25
+  },
+  "criticality": {
+    "cited_multiplier": 1.25,
+    "default_multiplier": 1.0
+  },
+  "normalization": {
+    "saturates_at": 30.0
+  },
+  "bands": [
+    {
+      "band": "CRITICAL",
+      "minimum_normalized": 0.75
+    },
+    {
+      "band": "HIGH",
+      "minimum_normalized": 0.5
+    },
+    {
+      "band": "MODERATE",
+      "minimum_normalized": 0.25
+    },
+    {
+      "band": "LOW",
+      "minimum_normalized": 0.0
+    }
+  ],
+  "resolution": {
+    "unresolved_severity": "MEDIUM",
+    "awaiting_review_severity": "HIGH",
+    "deferred_severity": "MEDIUM",
+    "conflict_severity": "MEDIUM",
+    "blocking_conflict_severity": "HIGH",
+    "conflict_statuses": [
+      "CANDIDATE",
+      "REVIEW_REQUIRED",
+      "AUTO_ACCEPTED",
+      "APPROVED"
+    ]
+  },
+  "weak": {
+    "trust_floor": [
+      "INFERRED",
+      "GENERATED"
+    ],
+    "severity_by_classification": {
+      "INFERRED": "MEDIUM",
+      "GENERATED": "HIGH"
+    },
+    "requires_material_support": true
+  },
+  "stale": {
+    "severity": "HIGH"
+  },
+  "result_conflicts": [
+    {
+      "task_type": "CDR_SUMMARY",
+      "metric": "imei_with_multiple_imsi_count",
+      "rule": "DEVICE_OBSERVED_WITH_MULTIPLE_SUBSCRIBER_IDENTITIES",
+      "severity": "MEDIUM"
+    }
+  ],
+  "expectations": [
+    {
+      "expectation_id": "EXPECT_SUBSCRIBER_REGISTER",
+      "kind": "SOURCE_PRESENT",
+      "when_source_present": "SYNTHETIC_CDR",
+      "expected_source_id": "SYNTHETIC_SUBSCRIBER_REGISTER",
+      "severity": "MEDIUM"
+    },
+    {
+      "expectation_id": "EXPECT_DEVICE_REGISTRY",
+      "kind": "SOURCE_PRESENT",
+      "when_source_present": "SYNTHETIC_CDR",
+      "expected_source_id": "SYNTHETIC_DEVICE_REGISTRY",
+      "severity": "LOW"
+    },
+    {
+      "expectation_id": "EXPECT_CDR_SUMMARY",
+      "kind": "ANALYSIS_PRESENT",
+      "when_source_present": "SYNTHETIC_CDR",
+      "expected_task_type": "CDR_SUMMARY",
+      "severity": "MEDIUM"
+    }
+  ],
+  "finding_support": {
+    "no_support_severity": "HIGH",
+    "dependency_severity": "MEDIUM",
+    "weak_relationship_severity": "LOW",
+    "dependency_categories": [
+      "UNRESOLVED",
+      "CONFLICTING",
+      "WEAK",
+      "STALE",
+      "HUMAN_REVIEW"
+    ],
+    "weak_relationship_reasons": [
+      "RESTS_ON_SINGLE_WEAK_RELATIONSHIP"
+    ]
+  }
+}

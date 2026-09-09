@@ -23,6 +23,9 @@ behaviour exercised against the real dependency, not a fake.
 | Graph analytics: connectivity, components, bridges, temporal concentration | IMPLEMENTED | 98 unit/service/API tests |
 | Bounded shortest path over the authorized graph | VERIFIED LIVE | Cypher exercised against Neo4j 5 Community |
 | Investigation signals with versioned history | IMPLEMENTED | service and repository tests |
+| Evidence debt: seven categories, weighting policy, bands | IMPLEMENTED | 173 unit/service/API tests |
+| Debt snapshots, item lifecycle and trend | IMPLEMENTED | repository and service tests |
+| Debt computed over the authorized evidence scope | IMPLEMENTED | service and API tests; 7 Neo4j integration tests written, **not yet run against a server** |
 | Graph ingestion trigger | PARTIALLY IMPLEMENTED | in-process only; no endpoint or scheduled job |
 | Staleness / invalidation | PARTIALLY IMPLEMENTED | direct-only; no dependency graph |
 | Multi-role context selection | PARTIALLY IMPLEMENTED | the user's first role is used |
@@ -35,7 +38,7 @@ behaviour exercised against the real dependency, not a fake.
 | Blockchain / integrity anchoring | NOT IMPLEMENTED | — |
 | Asyncio DAG task executor | NOT IMPLEMENTED | contract only |
 
-**511 tests**: 489 that need no external service, and 22 that need a reachable
+**708 tests**: 679 that need no external service, and 29 that need a reachable
 Neo4j and skip themselves when there is none.
 
 ## Completed
@@ -662,9 +665,295 @@ absence meaningful.
   it rather than on the label.
 - **No cross-case analytics.** Every query is scoped to one case by construction.
 
+### Phase 7B — evidence debt
+
+**What debt is, and is not.** Evidence Debt measures how much of what the
+investigation currently *knows* rests on evidence that is unresolved, weak,
+conflicting, missing, stale, or waiting on a person. It is a quality metric over
+the investigation, and the model is worded so that it cannot be read as anything
+else: there is no category, reason code, band or field that describes a person,
+and a test asserts the vocabulary stays that way.
+
+It is not guilt, not a probability of criminality or conviction, not case
+completion, and not a measure of an investigator. A case can be legally strong
+and carry HIGH debt; a case with no debt at all can be worthless. HIGH means the
+investigation has support gaps, and names them.
+
+**No single opaque number.** Five things are kept apart and reported separately,
+because collapsing them is exactly how a "72% complete" figure gets built:
+execution progress belongs to the evidence lifecycle, evidence coverage and
+resolution coverage to their own subsystems, human review to the review queue,
+and debt to this one. Within debt, every category is reported with its own item
+count and weighted contribution, and every item carries the four factors it was
+built from. The normalized [0, 1] score and the band exist for display; the raw
+total and the breakdown are always available beside them.
+
+**Architecture.**
+
+```
+EvidenceDebtService        authorization, view assembly, weighting, audit
+  -> CaseDebtView          the authorized, value-free view — all a detector sees
+  -> detectors             pure, deterministic: seven categories
+  -> EvidenceDebtPolicy    weights, severities, expectations, thresholds
+  -> EvidenceDebtRepository  snapshots and items, with history
+       -> evidence / resolution / analytics repositories (read only)
+```
+
+`Neo4jGraphRepository` gained nothing. The debt engine never receives a driver
+object, never runs a graph query of its own, and never re-derives what another
+subsystem already decided: entity resolution stays authoritative for identity,
+the evidence lifecycle for versions and results, analytics for findings. Debt
+observes what those systems recorded about themselves and names the gaps.
+
+**Debt categories.** Seven, with no catch-all:
+
+| category | what it means | where the fact comes from |
+|---|---|---|
+| `UNRESOLVED` | a pair was compared and nothing was concluded | a `CANDIDATE` resolution, below the review floor |
+| `HUMAN_REVIEW` | a decision is waiting on a person | a `REVIEW_REQUIRED` resolution, with or without a deferral |
+| `CONFLICTING` | evidence disagrees on a material attribute | a resolution's recorded conflicts; a disagreement metric an analyzer already reported |
+| `WEAK` | reasoning rests on evidence below the trust floor | `classification` INFERRED/GENERATED, *and* relied upon |
+| `MISSING` | corroboration the policy expects is absent | a configured expectation whose trigger source is present |
+| `STALE` | a result was computed from a superseded version | `ResultState.STALE` with nothing recomputed for the current version |
+| `UNSUPPORTED_FINDING` | a recorded finding's support is incomplete | a signal citing evidence that is itself in debt |
+
+An open decision produces **exactly one** item, never two. A `REVIEW_REQUIRED`
+resolution is both an open identity question and an open piece of work; counting
+it under both categories would double a case's debt for a single gap, so the
+category is the one that says what has to happen — a person has to look.
+
+Two negatives are as load-bearing as the positives. An `INFERRED` fact is *not*
+automatically bad evidence: it becomes debt only when the case's recorded
+reasoning rests on it, which the view answers by asking whether a finding cites
+it or an accepted identity link was derived from it. And a *rejected* resolution
+is not a conflict: a person concluded the two observations denote different
+entities, so the disagreement was the right answer rather than an unexplained
+one.
+
+**Expectations are configuration, not judgement.** "This case is missing a
+subscriber register" is a statement about how a deployment investigates, not
+about evidence, so `MISSING` fires only from explicit policy entries and only
+when the entry's trigger source is actually present. A case with no CDR evidence
+is not missing a CDR summary. Two shapes are supported: a source the case should
+carry (`SOURCE_PRESENT`) and an analysis its evidence should have
+(`ANALYSIS_PRESENT`). The shipped policy carries three, one of which —
+`EXPECT_DEVICE_REGISTRY` — is corroboration this platform has no adapter for at
+all, which is precisely the kind of gap the metric exists to name rather than
+hide.
+
+Where staleness and a missing analysis would both describe the same evidence,
+only staleness is reported: the analysis is not absent, it is out of date, and
+one thing to fix should not appear as two.
+
+**Weighting policy** (`app/core/debt/debt_policy.json`, path from
+`DEBT_POLICY_PATH`). Every weight, severity multiplier, saturation point,
+expectation and band threshold is data; nothing in the detectors or the service
+compares a hard-coded number. One contribution is:
+
+```
+category_weight x severity_multiplier x scope_factor x criticality_factor
+```
+
+- **category weight** — how much this kind of gap matters (CONFLICTING 1.0 down
+  to WEAK 0.6).
+- **severity** — LOW 0.5 to CRITICAL 2.0, chosen per item by the detector from
+  policy: a blocking conflict outweighs a non-blocking one, an unreviewed
+  decision outweighs a deferred one.
+- **scope factor** — how much of the case the gap touches, mapped into [0, 1] by
+  a saturation point, with a floor so a single-item gap still counts.
+- **criticality factor** — whether the affected evidence is something the case's
+  reasoning actually rests on, which is the same "cited by a finding or an
+  accepted link" test the weak detector uses.
+
+Every item stores all four factors, the raw affected-scope count and the
+product, so "why did this rank first?" and "why is this case HIGH?" are both
+answerable from the stored record alone. The case total is the sum of the
+contributions; `normalized = min(1, total / saturates_at)`; the band comes from
+ordered thresholds (LOW / MODERATE / HIGH / CRITICAL). No number in the response
+appears without its inputs.
+
+**Snapshots, versions and trend.** A snapshot records the total, the normalized
+score, the band, the item count, the full per-category breakdown, the top items
+*serialised in full*, the ids of every item, the evidence scope, the policy
+version and the engine version. Snapshots are append-only; a recalculation adds
+one and never edits an earlier one. `EvidenceDebtItem` carries the engine version
+alongside the policy version deliberately — a number is only explainable if you
+know which rules *and* which weights produced it.
+
+A change block accompanies every response: the previous snapshot's id and total,
+the delta, which debt ids were resolved, which were newly introduced, and how
+many are unchanged.
+
+**Idempotency.** A debt item's identity is a fingerprint of what it is *about* —
+case, category, subject type, subject reference and any discriminator such as a
+conflict rule name — and contains no timestamp, run id or ordering. Its facts
+have a second fingerprint over the assertion itself. So a recalculation over
+unchanged investigation state produces the same ids, the same totals and the
+same breakdown, writes no new item version, and emits no creation event. A
+changed fact writes a new version and keeps the previous one.
+
+**Lifecycle.** `OPEN` → `ACKNOWLEDGED` (a person accepts that the gap stands) →
+`RESOLVED` (a recalculation no longer detects it), with `SUPERSEDED` marking the
+older versions of an item whose facts changed. Nothing is deleted. An
+acknowledgement survives recalculation while the item's facts are unchanged, so
+automation never quietly undoes an investigator's judgement; when the facts do
+change the new version starts OPEN and the acknowledged version is kept, so the
+history stays readable either way.
+
+**Authorization, which is structural rather than remembered.** The flow is:
+
+```
+raw investigation state -> case scope -> per-evidence authorization
+                        -> privacy -> authorized view -> detection -> snapshot
+```
+
+A detector never receives a repository, an object store, an `EvidenceRecord` or a
+payload. It receives a `CaseDebtView` assembled from already-authorized state,
+and that type carries no resource value at all: an entity is the hashed
+`entity_ref` resolution and the graph already publish, an attribute is its name,
+a conflict is a rule name. Evidence a reader may not see never enters the view,
+so the gaps it would have created do not exist as far as the detectors are
+concerned — there is no item, no count, no category and no fraction of a total.
+Two derived rules mirror what the owning subsystems already do: a resolution is
+in scope only when *both* its evidence items are, and a finding only when *every*
+evidence item it cites is.
+
+Three consequences that look like defects and are not. **Two readers legitimately
+get different totals**, because debt is debt within the authorized scope.
+**A read computes but never persists** — `GET` recalculates and writes nothing,
+for the same reason viewing evidence never starts a processing run. And **a
+persisted record belongs to the scope it was computed in**: snapshots and items
+are keyed on a fingerprint of the authorized evidence scope, so a narrow reader
+can never read a cleared reader's numbers, compare a trend against them, or close
+a gap they cannot see.
+
+Roles: `VIEW_EVIDENCE_DEBT` to read, `RECALCULATE_EVIDENCE_DEBT` to record,
+`ACKNOWLEDGE_EVIDENCE_DEBT` to sign a gap off. The analyst role holds the first
+only — analysts read and analyse; they do not record a case's debt position or
+accept a gap on the investigation's behalf.
+
+**Privacy.** Debt items carry field names, rule names, ids, counts and numbers,
+never values. Entity references are the hashed refs, so a masked entity is still
+a distinct clickable thing and discloses nothing. The one place a payload is
+read at all is the conflict metrics an analyzer already computed, and only the
+metric names the policy lists are read — a field the policy does not name is
+never opened. A test asserts no identifier from the synthetic data appears
+anywhere in a partial reader's response, and another asserts audit payloads
+carry the same restraint.
+
+**API.** All authenticated, case-scoped, context-enforced and fail-closed:
+
+- `GET /cases/{case_id}/evidence-debt`
+- `GET /cases/{case_id}/evidence-debt/breakdown`
+- `GET /cases/{case_id}/evidence-debt/items` (optional `category`, `status`)
+- `GET /cases/{case_id}/evidence-debt/items/{debt_id}`
+- `POST /cases/{case_id}/evidence-debt/recalculate`
+- `POST /cases/{case_id}/evidence-debt/items/{debt_id}/acknowledge`
+
+The last is one endpoint beyond the five the phase brief enumerates, and it is
+there because the lifecycle needs it: an `ACKNOWLEDGED` state no client can reach
+would be a state that only pretends to work, and recalculation is required not to
+undo it. Unknown and unauthorized debt ids answer identically, so neither can be
+enumerated.
+
+**Recommendation boundary, not recommendations.** Each item records what a later
+Navigator will need — `actionable`, `priority`, `blocking_reason`
+(`AWAITING_HUMAN_REVIEW`, `AWAITING_ADDITIONAL_EVIDENCE`, `AWAITING_REANALYSIS`,
+`AWAITING_ENTITY_RESOLUTION`), `required_capability`, and the related evidence,
+resolution and finding ids. Nothing in this phase recommends an action, ranks
+work for a person, or acts. It is an integration boundary and no more.
+
+**Audit.** Through the existing EventStore, with the acting user, case and the
+correlation id from the authorization decision:
+`EVIDENCE_DEBT_CALCULATION_STARTED`, `_COMPLETED`, `_FAILED`,
+`EVIDENCE_DEBT_CREATED`, `EVIDENCE_DEBT_RESOLVED`, `EVIDENCE_DEBT_REVISED`, plus
+`EVIDENCE_DEBT_ACCESS_DENIED` — the last added for the same reason the Phase 2
+denial events were, so a refused read leaves a record rather than nothing.
+
+**Synthetic data.** CASE-004, a separate case so the Phase 5, 6 and 7A
+expectations are untouched. It contains, deliberately: two register entries
+scoring alike on one household number (human review); register pairs sharing
+only a surname and a city (unresolved); entries agreeing on everything but an
+identity reference (conflict); one handset the operator recorded under two
+subscriber identities (conflict, from the analyzer's own count); an export the
+operator declared `INFERRED` and that findings rest on (weak); no device
+registry and one export never analysed (missing); a corrected export whose
+earlier result nobody recomputed (stale); `CDR-EXPORT-DEBT-CLEAN`, which is
+simply fine and whose findings carry no debt at all; and
+`REG-EXPORT-DEBT-RESTRICTED` at L3. Nothing in the data describes conduct.
+
+Two adapters gained a small symmetric capability to support this: the CDR source
+now honours a per-export `classification` (an operator that reconstructed records
+from partial logs is not observing them, and an adapter must never upgrade what a
+source declared), and the register source a per-register `security_level`, as the
+CDR source already had.
+
+**The mandatory security test.** The restricted register's single entry is the
+*only* reason one identity conflict in CASE-004 exists. The cleared reader sees
+that conflict; the uncleared reader finds no trace of it — not in the total, not
+in the item count, not in any category's count, not as an id, not in an
+explanation, and not in a trend, and asking for the item by its id answers
+exactly as an unknown id does. There is no "1 hidden conflict" counter anywhere,
+because the item was never computed. A separate test asserts a narrow reader's
+recalculation cannot close a gap that exists only in a wider scope, and another
+sweeps every debt response for every restricted value in the fixture. The cleared
+half is what makes the absence meaningful.
+
+**Tests.** 679 passing with no external service, 197 of them new — 166
+evidence-debt tests plus 24 that the route-enumerating security regression suite
+generated automatically for the six new endpoints, and 7 debt integration tests
+that skip without a server. By module: 36 detector tests over views built by hand
+so every answer is known in advance, 29 policy tests including deliberately
+broken documents, 19 repository tests for versioning and scope keying, 57 service
+tests over the real pipeline, 25 API tests, and 7 Neo4j integration tests.
+
+**The Neo4j integration tests for this phase have not been run against a
+server.** `tests/test_debt_neo4j_integration.py` exists, collects, and skips
+itself with the documented reason, and the other 28 integration tests skip
+alongside it — no Docker engine would start on the machine this phase was built
+on, so no Neo4j was reachable. Everything above it was verified against the
+in-memory graph repository, which enforces the same identity and scoping rules;
+what remains unproven is only what a real server can prove. Run
+`pytest -m integration` once `docker compose up -d neo4j` is healthy, and update
+this row to VERIFIED LIVE if it passes.
+
+**Zero external spend.** Deterministic Python and the standard library. No LLM
+call, no paid service, no new runtime dependency, no queue and no scheduler.
+
+**Phase 7B limitations.**
+
+- **Debt is recomputed per request.** Nothing is cached; each call rebuilds the
+  authorized view and re-runs every detector. Correct and simple at case scale,
+  and the place to look first if a case ever gets large. A production version
+  would recalculate on the events that change the inputs.
+- **A record belongs to a scope, and a scope changes when evidence does.** Adding
+  evidence to a case gives a reader a new scope fingerprint, so their next
+  calculation starts a fresh record; earlier records are retained and readable,
+  but an acknowledgement does not carry across. Carrying one across scopes would
+  mean copying an investigator's free-text reason into a context it was not
+  written for.
+- **Dependencies are only the ones already recorded.** Staleness follows the
+  evidence lifecycle's own direct transition, and finding support follows a
+  signal's own `supporting_evidence_ids`. There is no dependency graph, so a
+  result derived from *other* evidence is still not invalidated transitively.
+- **Finding-support debt is derived, and scales with findings.** A case with many
+  recorded signals resting on the same gap gets one item per signal per
+  dependency category. Each names its dependency and its affected evidence, but
+  the category will dominate a case that has run analytics repeatedly.
+- **Conflict detection reuses two sources only** — a resolution's recorded
+  conflicts and a metric an analyzer already reports. There is no independent
+  cross-evidence attribute comparison, and adding one would be a second matching
+  engine rather than a debt engine.
+- **Only `PERSON` identity gaps reach the unresolved and human-review
+  categories,** because entity resolution resolves only person observations.
+- **No debt assignment, priority queue or SLA.** `priority` is a deterministic
+  rank by contribution, not a workload allocation, and nothing notifies anyone.
+- **No cross-case debt.** Every calculation is scoped to one case by
+  construction.
+
 ## In progress
 
-Nothing. Phase 7A is complete and committed.
+Nothing. Phase 7B is complete and committed.
 
 ## Explicitly NOT implemented
 
@@ -673,25 +962,30 @@ These are named because the graph, entity resolution and analytics exist now, an
 - **Advanced graph analytics are NOT implemented.** Phase 7A added degree, connected components, articulation-point bridges, fixed-window temporal concentration and bounded shortest paths. There is no community detection, no link prediction, no centrality beyond the bridge heuristic, and no machine learning of any kind.
 - **IMEI/IMSI analytics are NOT implemented.** The `INSERTED_IN` edges record which SIM was seen in which handset, but nothing analyses SIM-swapping or hardware hopping.
 - **Tower / spatio-temporal analytics are NOT implemented.** `cell_id` is carried as a property; there is no CellTower node, no geofencing and no tower-dump intersection.
-- **The Evidence Navigator is NOT implemented.**
-- **Evidence Debt is NOT implemented.**
+- **The Evidence Navigator is NOT implemented.** Phase 7B records what a Navigator would consume — each debt item's actionability, priority, blocking reason and required capability — and stops there. Nothing recommends an action, ranks work for a person, or acts.
+- **Next-best-action recommendation is NOT implemented,** and neither is non-linear workspace navigation.
 - **Entity resolution beyond pairs is NOT implemented.** Resolution decides whether two person observations denote one entity, and only that: there is no transitive clustering, no canonical/golden record, and no entity type other than PERSON.
 - **Frontend graph visualization is NOT implemented.** The DTOs are shaped for a future Cytoscape client; no UI exists.
 - **Blockchain / integrity anchoring is NOT implemented.** Per-version SHA-256 exists as integrity metadata only; no chaining, signing or anchoring, and no admissibility claim.
 
 ## Next — exactly one subsystem
 
-Two packages landed beside `app/core/graph/` rather than inside it, and for the
-same reason: entity resolution is a processing step over evidence that *projects
-into* the graph, and analytics is a read-model computed *from* it. Folding either
-into the graph package would have blurred the boundary each phase exists to keep
-sharp.
+Three packages now sit beside `app/core/graph/` rather than inside it, and for
+the same reason each time: entity resolution is a processing step over evidence
+that *projects into* the graph, analytics is a read-model computed *from* it, and
+evidence debt is a read-model computed from all three planes at once. Folding any
+of them into the graph package would have blurred the boundary each phase exists
+to keep sharp.
+
+`app/core/debt/` is the newest, and it depends on the others in one direction
+only: it reads their persisted state and writes nothing back to them. Nothing in
+evidence, resolution or analytics imports it.
 
 Pick exactly one of the subsystems in **Explicitly NOT implemented** above and
 finish it before starting another. None of them has been started — the Evidence
-Navigator, Evidence Debt, IMEI/IMSI analytics, tower and spatio-temporal
-analytics, the frontend, and blockchain / integrity anchoring are all absent, and
-no partial scaffolding for any of them exists in the tree.
+Navigator, IMEI/IMSI analytics, tower and spatio-temporal analytics, the
+frontend, and blockchain / integrity anchoring are all absent, and no partial
+scaffolding for any of them exists in the tree.
 
 Do not start two of them in parallel.
 
@@ -708,7 +1002,8 @@ Do not start two of them in parallel.
 - **Two synthetic source adapters only** (`SyntheticCDRSource`, `SyntheticSubscriberRegisterSource`), over small local datasets. No government or operator source integrations, and no FIR, financial or ANPR adapters.
 - **One analyzer**, a structural CDR summary. No real telecom analytics. (Entity resolution and graph analytics are separate subsystems, not analyzers — see Phases 6 and 7A.)
 - **No production object storage.** Payloads are local files; there is no replication, retention policy, encryption at rest, or lifecycle management.
-- **Staleness is direct-only.** A new evidence version marks that evidence's own results STALE. There is no dependency graph, so a result derived from *other* evidence is not invalidated transitively — `mark_result_state` is the extension point.
+- **Staleness is direct-only.** A new evidence version marks that evidence's own results STALE. There is no dependency graph, so a result derived from *other* evidence is not invalidated transitively — `mark_result_state` is the extension point. Evidence debt reports staleness where it is recorded; it does not chase it further.
+- **Evidence debt is recomputed per request and never cached,** and a debt record belongs to the authorized evidence scope it was computed in.
 - **No COMPARE operation and no REQUEST ACCESS workflow yet**; versions and results are retained so both can be built on top.
 - **Analysis runs synchronously** inside the request. The asyncio DAG `TaskExecutor` is still an unimplemented contract.
 - **Graph ingestion has no HTTP trigger.** `GraphService.ingest_case_evidence` is called in-process; there is no endpoint or scheduled job that projects evidence into the graph yet. (Entity resolution does have one: `POST /cases/{id}/entity-resolution/run`.)

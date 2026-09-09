@@ -99,6 +99,94 @@
           "note": "Shares a surname and a city with REG-2003 and nothing else."
         }
       ]
+    },
+    {
+      "register_id": "REG-EXPORT-DEBT-001",
+      "registrar": "SYNTH-TELECOM",
+      "case_id": "CASE-004",
+      "subscribers": [
+        {
+          "register_id": "REG-4001",
+          "subscriber_name": "Kavya Menon",
+          "subscriber_address": "18 Church Street, Kochi",
+          "locality": "Kochi",
+          "msisdn": "+91 98405 00001",
+          "imei": "359881034512345",
+          "account_number": "ACC-40011",
+          "national_id_ref": "NID-SYNTH-4A",
+          "operator_subscriber_id": "SUB-SYNTH-4001",
+          "registered_at": "2026-02-10T00:00:00+05:30",
+          "note": "The subscriber the operator export names, reached through the operator reference."
+        },
+        {
+          "register_id": "REG-4002",
+          "subscriber_name": "Arjun Pillai",
+          "subscriber_address": "5 Marine Drive, Kochi",
+          "locality": "Kochi",
+          "msisdn": "919840500007",
+          "imei": "357000112233445",
+          "account_number": "ACC-40022",
+          "national_id_ref": "NID-SYNTH-4B",
+          "registered_at": "2026-02-04T00:00:00+05:30",
+          "note": "One of two register entries on the same household number and handset."
+        },
+        {
+          "register_id": "REG-4003",
+          "subscriber_name": "Anita Pillai",
+          "subscriber_address": "5 Marine Drive, Kochi",
+          "locality": "Kochi",
+          "msisdn": "919840500007",
+          "imei": "357000112233445",
+          "account_number": "ACC-40033",
+          "national_id_ref": "NID-SYNTH-4C",
+          "registered_at": "2026-02-05T00:00:00+05:30",
+          "note": "The second entry on that number, with a different name and identity reference."
+        },
+        {
+          "register_id": "REG-4004",
+          "subscriber_name": "Suresh Menon",
+          "subscriber_address": "22 Panampilly Nagar, Kochi",
+          "locality": "Kochi",
+          "msisdn": "919840777001",
+          "account_number": "ACC-40044",
+          "national_id_ref": "NID-SYNTH-4D",
+          "registered_at": "2026-02-11T00:00:00+05:30",
+          "note": "Similar name and locality to REG-4005, and a different person."
+        },
+        {
+          "register_id": "REG-4005",
+          "subscriber_name": "Sunesh Menon",
+          "subscriber_address": "9 Vyttila Junction, Kochi",
+          "locality": "Kochi",
+          "msisdn": "919840777002",
+          "account_number": "ACC-40055",
+          "national_id_ref": "NID-SYNTH-4E",
+          "registered_at": "2026-02-12T00:00:00+05:30",
+          "note": "Shares a surname and a city with REG-4004 and nothing else."
+        }
+      ]
+    },
+    {
+      "register_id": "REG-EXPORT-DEBT-RESTRICTED",
+      "registrar": "SYNTH-TELECOM",
+      "case_id": "CASE-004",
+      "security_level": "L3",
+      "note": "A restricted register. Its single entry is the only reason one identity conflict in this case exists, so a reader without clearance for it must find no trace of that conflict anywhere.",
+      "subscribers": [
+        {
+          "register_id": "REG-4090",
+          "subscriber_name": "Kavya Menon",
+          "subscriber_address": "18 Church Street, Kochi",
+          "locality": "Kochi",
+          "msisdn": "+91 98405 00001",
+          "imei": "359881034512345",
+          "account_number": "ACC-40011",
+          "national_id_ref": "NID-SYNTH-9Z",
+          "operator_subscriber_id": "SUB-SYNTH-4001",
+          "registered_at": "2026-02-14T00:00:00+05:30",
+          "note": "Every identifier matches REG-4001 except the identity reference."
+        }
+      ]
     }
   ]
 }

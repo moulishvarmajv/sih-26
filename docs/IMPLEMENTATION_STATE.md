@@ -268,7 +268,7 @@ Together with the existing CDR export they cover:
 **Zero external spend.** Deterministic Python and the standard library. No LLM
 call, no paid AI service, no new runtime dependency, and no queue or scheduler.
 
-**Tests.** 307 passing, 133 of them new, covering normalization determinism,
+**Tests.** 308 passing, 126 of them new, covering normalization determinism,
 blocking, exact and multi-signal matching, confidence derivation, ambiguity
 routing, conflict detection, absence of silent merges, INFERRED vs OBSERVED
 labelling, retained supporting evidence and policy version, approve/reject/defer,

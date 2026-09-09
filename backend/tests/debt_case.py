@@ -132,12 +132,35 @@ def build_debt_case(
     )
 
 
+class ReplaySource:
+    """Replays one record from a shipped dataset under a different case id.
+
+    The datasets are keyed to `CASE-004`; the live suites write under a case id
+    unique to the run so they can clean up exactly what they wrote. Fetching by
+    the dataset's id and ingesting under the run's is what lets both use the
+    same fixture data.
+    """
+
+    def __init__(self, source_id: str, item) -> None:
+        self.source_id = source_id
+        self._item = item
+
+    def fetch(self, case_id: str):
+        return [self._item]
+
+
 def supersede_extra_export(evidence_service, case: Case, tmp_path: Path) -> None:
     """Ingest a corrected `CDR-EXPORT-DEBT-EXTRA`, leaving its result stale.
 
     A static dataset cannot hold two versions of one export, so the correction
     is made here — which is also what happens in practice when an operator
     re-sends an export with a duration fixed.
+
+    The corrected export is fetched under the *dataset's* case id and ingested
+    under the caller's, so this works whether the case is `CASE-004` or a live
+    suite's per-run id. Fetching under the caller's id instead would silently
+    return nothing for a live run, and the staleness it exists to create would
+    never happen.
     """
     dataset = json.loads(DEFAULT_DATASET.read_text(encoding="utf-8"))
     for export in dataset["exports"]:
@@ -145,4 +168,11 @@ def supersede_extra_export(evidence_service, case: Case, tmp_path: Path) -> None
             export["records"][0]["duration_seconds"] = 71
     corrected = tmp_path / "corrected_cdr.json"
     corrected.write_text(json.dumps(dataset), encoding="utf-8")
-    evidence_service.ingest_from_source(case, SyntheticCDRSource(corrected))
+
+    source = SyntheticCDRSource(corrected)
+    replayed = [
+        item for item in source.fetch(CASE.id) if item.source_record_id == EXTRA_EXPORT
+    ]
+    assert replayed, f"the dataset no longer carries {EXTRA_EXPORT} for {CASE.id}"
+    for item in replayed:
+        evidence_service.ingest_from_source(case, ReplaySource(source.source_id, item))

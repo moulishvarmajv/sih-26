@@ -25,7 +25,13 @@ from app.infrastructure.sources.synthetic_cdr import SyntheticCDRSource
 from app.infrastructure.sources.synthetic_subscriber import SyntheticSubscriberRegisterSource
 from tests.api_harness import build_api_harness
 from tests.conftest import make_context, make_user
-from tests.debt_case import ANALYSED, RESTRICTED_VALUES, supersede_extra_export
+from tests.debt_case import (
+    ANALYSED,
+    CASE,
+    RESTRICTED_VALUES,
+    ReplaySource,
+    supersede_extra_export,
+)
 from tests.neo4j_support import SKIP_REASON, build_repository, cleanup, server_is_reachable
 
 pytestmark = [
@@ -54,8 +60,10 @@ def live(tmp_path, event_store, grants, policy, case_id):
     )
     harness.cases.create(case)
     for source in (SyntheticCDRSource(), SyntheticSubscriberRegisterSource()):
-        for item in list(source.fetch("CASE-004")):
-            harness.evidence_service.ingest_from_source(case, _OneShotSource(source, item))
+        for item in list(source.fetch(CASE.id)):
+            harness.evidence_service.ingest_from_source(
+                case, ReplaySource(source.source_id, item)
+            )
     grants.grant_case("USR-001", "POLICE", case.id, need_to_know=True)
 
     operator = make_user("USR-001", level="L3")
@@ -83,17 +91,6 @@ def live(tmp_path, event_store, grants, policy, case_id):
     harness.close()
     cleanup(graph, case_id)
     graph.close()
-
-
-class _OneShotSource:
-    """Replays one record from a shipped dataset under this run's case id."""
-
-    def __init__(self, source, item):
-        self.source_id = source.source_id
-        self._item = item
-
-    def fetch(self, case_id):
-        return [self._item]
 
 
 def test_debt_consumes_what_the_real_pipeline_recorded(live):

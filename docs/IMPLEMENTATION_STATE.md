@@ -25,7 +25,7 @@ behaviour exercised against the real dependency, not a fake.
 | Investigation signals with versioned history | IMPLEMENTED | service and repository tests |
 | Evidence debt: seven categories, weighting policy, bands | IMPLEMENTED | 173 unit/service/API tests |
 | Debt snapshots, item lifecycle and trend | IMPLEMENTED | repository and service tests |
-| Debt computed over the authorized evidence scope | IMPLEMENTED | service and API tests; 7 Neo4j integration tests written, **not yet run against a server** |
+| Debt computed over the authorized evidence scope | VERIFIED LIVE | 7 integration tests against Neo4j 5 Community |
 | Graph ingestion trigger | PARTIALLY IMPLEMENTED | in-process only; no endpoint or scheduled job |
 | Staleness / invalidation | PARTIALLY IMPLEMENTED | direct-only; no dependency graph |
 | Multi-role context selection | PARTIALLY IMPLEMENTED | the user's first role is used |
@@ -899,23 +899,22 @@ recalculation cannot close a gap that exists only in a wider scope, and another
 sweeps every debt response for every restricted value in the fixture. The cleared
 half is what makes the absence meaningful.
 
-**Tests.** 679 passing with no external service, 197 of them new — 166
-evidence-debt tests plus 24 that the route-enumerating security regression suite
-generated automatically for the six new endpoints, and 7 debt integration tests
-that skip without a server. By module: 36 detector tests over views built by hand
-so every answer is known in advance, 29 policy tests including deliberately
-broken documents, 19 repository tests for versioning and scope keying, 57 service
-tests over the real pipeline, 25 API tests, and 7 Neo4j integration tests.
+**Tests.** 708 passing, 197 new — 173 evidence-debt tests plus 24 that the
+route-enumerating security regression suite generated automatically for the six
+new endpoints. By module: 36 detector tests over views built by hand so every
+answer is known in advance, 29 policy tests including deliberately broken
+documents, 19 repository tests for versioning and scope keying, 57 service tests
+over the real pipeline, 25 API tests, and 7 Neo4j integration tests. All 29
+integration tests pass against a real Neo4j 5 Community container, and the suite
+skips them and stays green with no server reachable.
 
-**The Neo4j integration tests for this phase have not been run against a
-server.** `tests/test_debt_neo4j_integration.py` exists, collects, and skips
-itself with the documented reason, and the other 28 integration tests skip
-alongside it — no Docker engine would start on the machine this phase was built
-on, so no Neo4j was reachable. Everything above it was verified against the
-in-memory graph repository, which enforces the same identity and scoping rules;
-what remains unproven is only what a real server can prove. Run
-`pytest -m integration` once `docker compose up -d neo4j` is healthy, and update
-this row to VERIFIED LIVE if it passes.
+The live run earned its keep on the first attempt, in the way integration tests
+usually do: the debt fixture fetched its corrected export under the *dataset's*
+case id and ingested it under the run's unique one, so for a live run the
+correction landed nowhere, no version was superseded, and the `STALE` category
+was silently absent. Every in-memory suite passed throughout, because they use
+the dataset's own case id. `ReplaySource` in `tests/debt_case.py` now makes the
+fetch-under-one-id, ingest-under-another split explicit for both.
 
 **Zero external spend.** Deterministic Python and the standard library. No LLM
 call, no paid service, no new runtime dependency, no queue and no scheduler.

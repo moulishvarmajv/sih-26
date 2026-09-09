@@ -17,7 +17,7 @@ Two rules this module is careful about:
 from __future__ import annotations
 
 import re
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Protocol
 
 from app.core.evidence.models import EvidenceRecord, EvidenceVersion, TrustClassification
 from app.core.graph.models import (
@@ -36,6 +36,26 @@ _NON_DIGITS = re.compile(r"\D")
 
 class GraphMappingError(Exception):
     """Raised when evidence cannot be mapped into the graph."""
+
+
+class GraphMapper(Protocol):
+    """Turns one source's evidence into graph elements.
+
+    One implementation per source type, registered by source id. Evidence from a
+    source with no mapper has no graph projection yet and is skipped — never
+    mapped by a fallback that would invent structure the source never reported.
+    """
+
+    source_type: str
+
+    def map(
+        self,
+        record: EvidenceRecord,
+        version: EvidenceVersion,
+        payload: Mapping[str, Any],
+        processing_run_id: str | None = None,
+    ) -> GraphSnapshot:
+        ...
 
 
 def canonical_msisdn(raw: str) -> str:

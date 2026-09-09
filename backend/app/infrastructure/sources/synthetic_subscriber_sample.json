@@ -1,0 +1,104 @@
+{
+  "dataset": "SYNTHETIC-SUBSCRIBER-REGISTER-1",
+  "note": "Synthetic subscriber registration records for entity-resolution testing only. Not real subscriber data, and nothing here describes conduct: these are ordinary registration entries whose identifiers overlap in the ways a real register's do — duplicates, a shared household number, a reassigned number, and two different people with similar names.",
+  "registers": [
+    {
+      "register_id": "REG-EXPORT-001",
+      "registrar": "SYNTH-TELECOM",
+      "case_id": "CASE-001",
+      "subscribers": [
+        {
+          "register_id": "REG-1001",
+          "subscriber_name": "Ananya Sharma",
+          "subscriber_address": "12 M.G. Road, Pune",
+          "locality": "Pune",
+          "msisdn": "+91 98765 43210",
+          "imei": "356938035643809",
+          "account_number": "ACC-88213",
+          "national_id_ref": "NID-SYNTH-12A",
+          "operator_subscriber_id": "SUB-SYNTH-0001",
+          "registered_at": "2026-01-15T00:00:00+05:30",
+          "note": "Same subscriber the operator export names, written with a different phone format and reached through the operator reference."
+        },
+        {
+          "register_id": "REG-1002",
+          "subscriber_name": "Rohit Kulkarni",
+          "subscriber_address": "44 FC Road, Pune",
+          "locality": "Pune",
+          "msisdn": "919900112233",
+          "imei": "490154203237518",
+          "account_number": "ACC-77410",
+          "national_id_ref": "NID-SYNTH-31C",
+          "registered_at": "2026-01-08T00:00:00+05:30",
+          "note": "One of two register entries on the same household number and handset. Neither can be attributed to the operator subscriber without a human deciding."
+        },
+        {
+          "register_id": "REG-1003",
+          "subscriber_name": "Meera Kulkarni",
+          "subscriber_address": "44 FC Road, Pune",
+          "locality": "Pune",
+          "msisdn": "919900112233",
+          "imei": "490154203237518",
+          "account_number": "ACC-77985",
+          "national_id_ref": "NID-SYNTH-52D",
+          "registered_at": "2026-01-09T00:00:00+05:30",
+          "note": "The second entry on the same household number, with a different name and identity reference."
+        }
+      ]
+    },
+    {
+      "register_id": "REG-EXPORT-002",
+      "registrar": "SYNTH-TELECOM",
+      "case_id": "CASE-002",
+      "subscribers": [
+        {
+          "register_id": "REG-2001",
+          "subscriber_name": "Vikram Rao",
+          "subscriber_address": "5 Baner Road, Pune",
+          "locality": "Pune",
+          "msisdn": "+91 98450 00111",
+          "imei": "351756051523999",
+          "account_number": "ACC-31002",
+          "national_id_ref": "NID-SYNTH-A1",
+          "registered_at": "2024-03-02T00:00:00+05:30",
+          "valid_until": "2025-11-30T00:00:00+05:30",
+          "note": "Held the number until the registration lapsed."
+        },
+        {
+          "register_id": "REG-2002",
+          "subscriber_name": "Deepa Nair",
+          "subscriber_address": "77 Kothrud Lane, Pune",
+          "locality": "Pune",
+          "msisdn": "919845000111",
+          "imei": "351756051523999",
+          "account_number": "ACC-44988",
+          "national_id_ref": "NID-SYNTH-B2",
+          "registered_at": "2026-01-20T00:00:00+05:30",
+          "note": "The same number after reassignment: identifiers match, identity references do not."
+        },
+        {
+          "register_id": "REG-2003",
+          "subscriber_name": "Rohan Kulkarni",
+          "subscriber_address": "8 Baner Road, Pune",
+          "locality": "Pune",
+          "msisdn": "919845777001",
+          "account_number": "ACC-50110",
+          "national_id_ref": "NID-SYNTH-C3",
+          "registered_at": "2026-01-11T00:00:00+05:30",
+          "note": "Similar name and locality to REG-2004, and a different person."
+        },
+        {
+          "register_id": "REG-2004",
+          "subscriber_name": "Rohit Kulkarni",
+          "subscriber_address": "91 Kothrud Lane, Pune",
+          "locality": "Pune",
+          "msisdn": "919845777002",
+          "account_number": "ACC-50994",
+          "national_id_ref": "NID-SYNTH-D4",
+          "registered_at": "2026-01-12T00:00:00+05:30",
+          "note": "Shares a surname and a city with REG-2003 and nothing else."
+        }
+      ]
+    }
+  ]
+}

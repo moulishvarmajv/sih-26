@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Clearance policy configuration
     CLEARANCE_POLICY_PATH: str = "app/security/policy/clearance_policy.json"
 
+    # Entity resolution policy: matching weights, thresholds and conflict rules
+    RESOLUTION_POLICY_PATH: str = "app/core/resolution/resolution_policy.json"
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

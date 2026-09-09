@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "policy_version": "resolution-1.0.0",
+  "source_reliability": {
+    "SYNTHETIC_CDR": 0.9,
+    "SYNTHETIC_SUBSCRIBER_REGISTER": 0.8,
+    "default": 0.5
+  },
+  "entity_types": {
+    "PERSON": {
+      "blocking": [
+        "EXACT_PHONE",
+        "EXACT_IMEI",
+        "EXACT_ACCOUNT",
+        "SOURCE_IDENTIFIER",
+        "NAME_LOCALITY"
+      ],
+      "signals": {
+        "EXACT_PHONE": { "weight": 0.30, "attribute": "phone" },
+        "EXACT_IMEI": { "weight": 0.10, "attribute": "imei" },
+        "EXACT_ACCOUNT": { "weight": 0.15, "attribute": "account_number" },
+        "EXACT_SOURCE_IDENTIFIER": { "weight": 0.20, "attribute": "source_entity_ref" },
+        "NAME_SIMILARITY": {
+          "weight": 0.10,
+          "attribute": "name",
+          "minimum_similarity": 0.9
+        },
+        "ADDRESS_SIMILARITY": {
+          "weight": 0.05,
+          "attribute": "address",
+          "minimum_similarity": 0.8
+        },
+        "TEMPORAL_CONSISTENCY": {
+          "weight": 0.05,
+          "attribute": "observed_at",
+          "maximum_gap_days": 180
+        },
+        "SOURCE_RELIABILITY": { "weight": 0.03, "attribute": "source_id" },
+        "CROSS_SOURCE_CONSISTENCY": { "weight": 0.02, "attribute": "source_id" }
+      },
+      "conflicts": {
+        "national_id_ref": {
+          "rule": "DIFFERENT_NATIONAL_ID_REFERENCE",
+          "penalty": 0.4,
+          "blocks_auto_accept": true
+        },
+        "account_number": {
+          "rule": "DIFFERENT_ACCOUNT_NUMBER",
+          "penalty": 0.15,
+          "blocks_auto_accept": false
+        },
+        "name": {
+          "rule": "NAME_SIMILARITY_BELOW_CONFLICT_THRESHOLD",
+          "penalty": 0.2,
+          "blocks_auto_accept": true,
+          "maximum_similarity": 0.6
+        },
+        "observed_at": {
+          "rule": "OBSERVATION_WINDOWS_DISJOINT",
+          "penalty": 0.1,
+          "blocks_auto_accept": false
+        }
+      },
+      "thresholds": {
+        "auto_accept": 0.8,
+        "review_floor": 0.45,
+        "ambiguity_margin": 0.05,
+        "minimum_evidence_weight": 0.45
+      },
+      "confidence_bands": [
+        { "band": "HIGH", "minimum_score": 0.8 },
+        { "band": "MEDIUM", "minimum_score": 0.6 },
+        { "band": "LOW", "minimum_score": 0.0 }
+      ]
+    }
+  }
+}

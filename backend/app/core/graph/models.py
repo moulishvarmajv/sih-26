@@ -36,6 +36,10 @@ class RelationshipType(str, Enum):
     CALLED = "CALLED"
     OBSERVED_IN = "OBSERVED_IN"
     BELONGS_TO = "BELONGS_TO"
+    #: The one inferred relationship: written by entity resolution, never by
+    #: ingestion. It sits *beside* the observations rather than rewriting them,
+    #: carries trust_class INFERRED, and can be superseded or rejected later.
+    INFERRED_SAME_ENTITY = "INFERRED_SAME_ENTITY"
 
 
 #: The property that identifies a node of each label. Every MERGE keys on this,

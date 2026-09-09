@@ -74,27 +74,266 @@ _Update as phases land — do not let this drift from reality._
 
 **Tests.** 174 passing (44 new), plus 8 Neo4j integration tests that skip unless a server is reachable.
 
+### Phase 6 — deterministic entity resolution
+
+**What it decides.** Whether two *observations* of an entity, seen in different
+evidence, denote the same real-world entity. It never rewrites what was
+observed: an accepted resolution adds an `INFERRED` link beside the `OBSERVED`
+facts, and both stay readable and distinguishable. Resolution is an explicit
+processing step — it is not reachable from evidence ingestion or graph
+persistence, and reading a case's resolutions never computes any.
+
+Only `PERSON` entities are resolved. Identifiers (phone, IMEI, account) are
+matching *signals*; the entity being resolved is the person a source named.
+
+**Architecture.** One direction of dependency, mirroring the evidence and graph
+planes:
+
+```
+EntityResolutionService          authorization, orchestration, review, audit
+  -> ResolutionPolicy / Scorer   weights, thresholds, deterministic scoring
+  -> ResolutionRepository        decisions, candidates, reviews, lineage
+  -> GraphRepository             the inferred link only
+       -> Neo4j
+```
+
+`Neo4jGraphRepository` gained no matching logic; the service never sees a driver
+object. Extraction and projection sit beside the graph mapper as the pieces that
+know what a source means (`app/core/resolution/`).
+
+**Normalization** (`app/core/normalization.py`, shared with graph mapping so the
+two cannot drift). Formatting only: `+91 98765 43210` and `919876543210`
+canonicalise to the same digits, so they compare equal — but a number without a
+country code stays a *different* value than one with it, because assuming a
+country would be an inference. Identifiers collapse to upper-case alphanumerics,
+names and addresses to sorted lower-case tokens (so word order does not change
+identity), and similarity is `difflib.SequenceMatcher` over those canonical
+forms — stdlib, deterministic, no model. Every observation keeps
+`raw_attributes` alongside the canonical ones, so normalization never destroys
+provenance. Unusable values raise rather than being guessed at.
+
+**Candidate generation** (`candidates.py`). Deterministic blocking, never an
+all-pairs comparison: observations are indexed by a canonical key and only
+observations in the same block are compared. Five strategies, listed in policy:
+`EXACT_PHONE`, `EXACT_IMEI`, `EXACT_ACCOUNT`, `SOURCE_IDENTIFIER` (an entity's
+own key and any cross-source reference it quotes), and `NAME_LOCALITY`. The last
+blocks on *every* name token paired with the locality rather than on a
+positional surname, which would assume a name ordering that does not hold
+everywhere. Every candidate records the strategy and key it blocked on, so "why
+was this pair compared?" is answerable without re-running anything. Generating a
+candidate asserts nothing and writes nothing to the graph; two observations of
+the *same* entity key are not a candidate at all, since the source already said
+they are one entity.
+
+**Scoring** (`scoring.py`). Pure — a function of (policy, two observations), with
+no storage, clock or randomness. Two numbers come out and both matter:
+
+```
+score            = (earned contributions - conflict penalties) / comparable weight
+evidence_weight  = sum of the weights of the signals that were comparable
+```
+
+Dividing by the *comparable* weight means a source that simply does not carry an
+address is not punished for it; reporting the comparable weight separately means
+a pair agreeing on one weak attribute cannot masquerade as a pair agreeing on
+six strong ones. Each of the nine signals returns `AGREED`, `DISAGREED` or
+`NOT_COMPARABLE` with its weight and earned contribution, so the arithmetic is
+inspectable line by line. Conflicts are disagreements the policy names
+explicitly; they subtract, and some block auto-acceptance however high the
+score. A blocking conflict is decided on the *unpenalised* agreement, because
+the penalty exists to stop an automatic merge, not to hide the pair — one number
+registered to two different identity references is exactly what an investigator
+needs to see.
+
+Recommendations use identity vocabulary only: `MATCH`, `POSSIBLE_MATCH`,
+`REVIEW_REQUIRED`, `CONFLICT`, `UNRESOLVED`. Nothing in the subsystem describes
+conduct, and a test asserts the vocabulary stays that way.
+
+**Policy configuration** (`app/core/resolution/resolution_policy.json`, path from
+`RESOLUTION_POLICY_PATH`). Every weight, threshold and rule is data, keyed by
+entity type; no number is compared in code. There is deliberately no single
+universal threshold — four work together:
+
+| threshold | what it guards |
+|---|---|
+| `auto_accept` (0.80) | a score at or above this may be asserted without a human |
+| `review_floor` (0.45) | below this the pair is recorded and nothing is asserted |
+| `minimum_evidence_weight` (0.45) | how much had to be *comparable* before auto-accepting |
+| `ambiguity_margin` (0.05) | how close a rival candidate may be before both go to review |
+
+Signal weights sum to 1.0 (phone 0.30, source identifier 0.20, account 0.15,
+IMEI 0.10, name 0.10, address 0.05, temporal 0.05, source reliability 0.03,
+cross-source 0.02). Conflict rules carry a penalty and a `blocks_auto_accept`
+flag; source reliability is per-source data with a fail-low default for unknown
+sources. Confidence bands come from policy, and a decision stores the band's
+lower bound alongside the label, so confidence is never an unexplained number.
+
+**Human review.** Ambiguity goes to a person: when two candidates for the same
+observation score within the margin, neither is accepted, both are recorded with
+`AMBIGUOUS_ALTERNATIVE`, and the proposal becomes `REVIEW_REQUIRED` — picking
+the higher of 0.91 and 0.89 would be an arbitrary tie-break presented as a
+conclusion. `POST .../approve`, `.../reject` and `.../defer` record a reviewer,
+timestamp, action and optional reason; deferral deliberately leaves the
+resolution open so it stays in the queue. Reviews are append-only and survive
+supersession of the decision itself. Automated and human outcomes stay
+distinguishable forever through `decision_actor` (`SYSTEM` / `HUMAN`), and only
+an open decision can be closed — an auto-accepted or already-decided resolution
+cannot be re-decided in place.
+
+**Inferred graph relationships.** An accepted decision projects one
+`(:Person)-[:INFERRED_SAME_ENTITY]->(:Person)` edge carrying `resolution_id`,
+`lineage_id`, `resolution_version`, `status`, `trust_class: "INFERRED"`, score,
+confidence, evidence weight, `policy_version`, the supporting signal names, the
+conflict rules, *both* source evidence ids and version ids, and who decided.
+Direction is fixed by sorting the two entity keys and the edge's
+`observation_id` derives from the resolution id, so re-projecting is idempotent.
+Observed relationships are untouched: they remain `ON CREATE SET` only, and a
+test asserts every observation's properties are byte-identical after a
+resolution run. `update_inferred_link_status` is the one mutation the graph
+interface permits and its Cypher `MATCH` is scoped to `INFERRED_SAME_ENTITY`, so
+it cannot reach an observation however it is called — a rejected or superseded
+inference has its status restated, never deleted.
+
+An inferred link is derived from *two* evidence items, so the evidence-scoped
+`GET /cases/{id}/graph` cannot authorize it: `fetch_case_graph` excludes it by
+type and it is served instead by the entity-resolution API, which authorizes
+both sides.
+
+**Version lineage.** A lineage id identifies "this pair of entities in this
+case", order-independently. Each decision carries a `resolution_version`, the
+`policy_version` it was computed under, both evidence-version references, and an
+`input_fingerprint` over (both observation ids + policy version). Re-running with
+an unchanged fingerprint is a no-op; a changed one supersedes the previous
+decision (status `SUPERSEDED`, linked forward by `superseded_by`) and records a
+new version, with the old one still readable. A resolution a person *rejected* is
+never re-accepted automatically: the new version carries `PRIOR_HUMAN_REJECTION`
+and goes back to review. This is lineage only — the full dependency/staleness
+engine is still not built.
+
+**API.** All under an authenticated session with an active agency context:
+
+- `POST /cases/{case_id}/entity-resolution/run`
+- `GET /cases/{case_id}/entity-resolution` (optional `status_filter`)
+- `GET /cases/{case_id}/entity-resolution/{resolution_id}`
+- `POST /cases/{case_id}/entity-resolution/{resolution_id}/approve`
+- `POST /cases/{case_id}/entity-resolution/{resolution_id}/reject`
+- `POST /cases/{case_id}/entity-resolution/{resolution_id}/defer`
+
+Responses are machine-readable DTOs, not prose: `recommendation`, `score`,
+`evidence_weight`, `confidence` + `confidence_floor`, `policy_version`, reason
+codes, per-signal evidence, and conflicts with their rule and penalty. `GET`
+never resolves anything; running is an explicit `POST`.
+
+**Security boundary.** Authorization is per *evidence item* and happens before
+anything is read: a resolution is derived from two evidence items, so evidence
+the reader may not see never enters extraction, and a resolution is readable only
+when *both* its evidence items are. Running requires `RUN_ENTITY_RESOLUTION`,
+reading `VIEW_ENTITY_RESOLUTION`, and deciding `REVIEW_ENTITY_RESOLUTION` — the
+analyst role deliberately lacks the last. Unknown cases, unauthorized cases and
+unknown resolution ids all return the same code, so none can be enumerated.
+
+Matching material never leaves the process. Attribute *values* are not returned
+at any clearance level — the explanation names the attribute a signal compared
+and reports numbers, and a candidate reports the attribute it blocked on rather
+than the phone number it blocked on. Entity labels are masked through the
+existing privacy policy when the reader's evidence decision was PARTIAL, and a
+masked entity keeps a usable identity through a hashed `entity_ref`, exactly as
+graph node ids do. An API test asserts no raw identifier from the synthetic data
+appears anywhere in a partial reader's response.
+
+**Audit.** Through the existing EventStore, with the acting user, case and the
+correlation id from the authorization decision: `ENTITY_RESOLUTION_STARTED`,
+`_CANDIDATE_CREATED`, `_AUTO_ACCEPTED`, `_REVIEW_REQUIRED`, `_UNRESOLVED`,
+`_COMPLETED`, `_APPROVED`, `_REJECTED`, `_DEFERRED`, `_SUPERSEDED`,
+`_PROJECTED`, `_FAILED`, `_ACCESS_DENIED`. Payloads carry reason codes, scores
+and policy versions — never a resource value.
+
+**Test data.** A second local source, `SyntheticSubscriberRegisterSource`
+(`synthetic_subscriber_sample.json`), because a CDR carries no names or
+addresses to compare. Its records are ordinary registration entries whose
+identifiers overlap the way real ones do; nothing in the data describes conduct.
+Together with the existing CDR export they cover:
+
+| | scenario | outcome |
+|---|---|---|
+| A | one subscriber across a CDR export and a register | `AUTO_ACCEPTED` |
+| B | `+919876543210` vs `+91 98765 43210` | matches on the canonical phone |
+| C | phone + IMEI + operator reference + consistent window | score 0.988, HIGH |
+| D | two register entries on one household number | both `REVIEW_REQUIRED` |
+| E | a reassigned number with two identity references | `CONFLICT`, no merge |
+| F | similar names in one city, nothing else shared | `UNRESOLVED`, separate |
+| G | re-running over unchanged evidence | every decision unchanged |
+| H | a new register export | new candidate, earlier decisions kept |
+
+**Zero external spend.** Deterministic Python and the standard library. No LLM
+call, no paid AI service, no new runtime dependency, and no queue or scheduler.
+
+**Tests.** 307 passing, 133 of them new, covering normalization determinism,
+blocking, exact and multi-signal matching, confidence derivation, ambiguity
+routing, conflict detection, absence of silent merges, INFERRED vs OBSERVED
+labelling, retained supporting evidence and policy version, approve/reject/defer,
+role and case isolation, unauthorized access, idempotency, preserved history and
+emitted events. 9 of them are Neo4j integration tests for the inferred-link
+Cypher, alongside the 8 from Phase 5; all 17 pass against a real Neo4j 5
+Community container, and the suite skips them and stays green with no server
+reachable. The integration path earned its keep immediately: it caught the
+relationship reader stripping `trust_class` off inferred links, which the
+in-memory fake could not see.
+
+**Phase 6 limitations.**
+
+- **No transitive clustering.** Resolution decides pairs. If A matches B and B
+  matches C, nothing concludes A matches C, and there is no entity cluster or
+  canonical-record concept.
+- **PERSON only.** The policy is keyed by entity type and the projection has a
+  label map, but no other entity type is resolved.
+- **Subscriber-register evidence has no graph mapping.** It participates fully in
+  resolution; `GraphService` counts it as skipped during ingestion rather than
+  guessing a projection for it. Person nodes an inferred link needs are merged on
+  their natural key by the projection itself.
+- **Inferred links are absent from the case-graph endpoint.** Serving them there
+  needs two-sided evidence authorization in the graph query; until then they are
+  read through the resolution API.
+- **Similarity is a string ratio,** not a phonetic or transliteration-aware
+  comparison. Two spellings of one name across scripts will not match.
+- **Resolution runs synchronously** inside the request, like analysis. Candidate
+  generation is blocked rather than quadratic, but nothing is batched or
+  backgrounded.
+- **Recomputation is whole-case.** A run re-extracts and re-scores everything for
+  the case; there is no incremental "only what changed" path.
+- **The review queue has no assignment, priority or SLA,** and no notification —
+  `REVIEW_REQUIRED` is a status, not a workflow.
+
 ## In progress
 
-Nothing. Phase 5 is complete and committed.
+Nothing. Phase 6 is complete and committed.
 
 ## Explicitly NOT implemented
 
-These are named because the graph exists now and it would be easy to assume more of it than is true:
+These are named because the graph and entity resolution exist now, and it would be easy to assume more of them than is true:
 
-- **Entity resolution is NOT implemented.** Nodes are keyed on identifiers as observed (after formatting canonicalisation only). Nothing decides that two different identifiers are the same real-world entity, and no Person is inferred from a phone number.
 - **Graph analytics are NOT implemented.** No centrality, community detection, path finding, or link prediction.
 - **IMEI/IMSI analytics are NOT implemented.** The `INSERTED_IN` edges record which SIM was seen in which handset, but nothing analyses SIM-swapping or hardware hopping.
 - **Tower / spatio-temporal analytics are NOT implemented.** `cell_id` is carried as a property; there is no CellTower node, no geofencing and no tower-dump intersection.
 - **The Evidence Navigator is NOT implemented.**
+- **Entity resolution beyond pairs is NOT implemented.** Resolution decides whether two person observations denote one entity, and only that: there is no transitive clustering, no canonical/golden record, and no entity type other than PERSON.
 - **Frontend graph visualization is NOT implemented.** The DTOs are shaped for a future Cytoscape client; no UI exists.
 - **Blockchain / integrity anchoring is NOT implemented.** Per-version SHA-256 exists as integrity metadata only; no chaining, signing or anchoring, and no admissibility claim.
 
 ## Next — exactly one subsystem
 
-**Deterministic entity resolution** (`app/core/graph/`): decide when two observed identifiers denote the same entity, as an explicit, reviewable step that writes `INFERRED` (never `OBSERVED`) links and retains the evidence supporting each merge. This is the piece that turns a graph of identifiers into a graph of entities, and it must not be smuggled into ingestion.
+Entity resolution landed in `app/core/resolution/` rather than in `app/core/graph/`
+as this section previously anticipated: it is a processing step over evidence that
+*projects into* the graph, so folding it into the graph package would have blurred
+the boundary the phase exists to keep sharp.
 
-Do not start graph analytics, the navigator, the frontend, or blockchain work before that.
+Pick exactly one of the subsystems in **Explicitly NOT implemented** above and
+finish it before starting another. None of them has been started: graph analytics,
+the Evidence Navigator, IMEI/IMSI analytics, tower and spatio-temporal analytics,
+the frontend, and blockchain / integrity anchoring are all absent, and no partial
+scaffolding for any of them exists in the tree.
+
+Do not start two of them in parallel.
 
 ## Known limitations
 
@@ -106,15 +345,15 @@ Do not start graph analytics, the navigator, the frontend, or blockchain work be
 - **Grants and the agency directory are in-memory** and reset on restart. Persisted implementations drop in behind `AccessGrantRepository` / `AgencyDirectory`.
 - **Context switching picks the user's first role.** Multi-role users cannot yet choose which role a context operates under.
 - **The audit log is append-only by application convention, not cryptographically.** The SQLite file is writable by anything with filesystem access; no hash chaining or tamper-evidence yet. Integrity metadata (per-version SHA-256) exists for a future `IntegrityProvider`; no admissibility claim is made.
-- **One synthetic source adapter only** (`SyntheticCDRSource`), over a small local dataset. No government or operator source integrations, and no FIR, financial or ANPR adapters.
-- **One analyzer**, a structural CDR summary. No real telecom analytics, entity resolution, or graph analytics.
+- **Two synthetic source adapters only** (`SyntheticCDRSource`, `SyntheticSubscriberRegisterSource`), over small local datasets. No government or operator source integrations, and no FIR, financial or ANPR adapters.
+- **One analyzer**, a structural CDR summary. No real telecom analytics and no graph analytics. (Entity resolution is a separate subsystem, not an analyzer — see Phase 6.)
 - **No production object storage.** Payloads are local files; there is no replication, retention policy, encryption at rest, or lifecycle management.
 - **Staleness is direct-only.** A new evidence version marks that evidence's own results STALE. There is no dependency graph, so a result derived from *other* evidence is not invalidated transitively — `mark_result_state` is the extension point.
 - **No COMPARE operation and no REQUEST ACCESS workflow yet**; versions and results are retained so both can be built on top.
 - **Analysis runs synchronously** inside the request. The asyncio DAG `TaskExecutor` is still an unimplemented contract.
-- **Graph ingestion has no HTTP trigger.** `GraphService.ingest_case_evidence` is called in-process; there is no endpoint or scheduled job that projects evidence into the graph yet.
+- **Graph ingestion has no HTTP trigger.** `GraphService.ingest_case_evidence` is called in-process; there is no endpoint or scheduled job that projects evidence into the graph yet. (Entity resolution does have one: `POST /cases/{id}/entity-resolution/run`.)
 - **The graph is not incrementally maintained.** Ingestion re-projects a case's current evidence; deleting or superseding evidence does not retract observations already written.
-- **One graph mapper** (CDR). FIR, financial and ANPR sources have no mapping.
+- **One graph mapper** (CDR). Subscriber-register evidence resolves but does not project into the graph; `GraphService` counts unmapped sources as skipped rather than guessing a projection. FIR, financial and ANPR sources have no mapping.
 - **No frontend.**
 - **No lint/type tooling** (ruff/mypy) is configured in the repo; validation is the test suite plus import checks.
 

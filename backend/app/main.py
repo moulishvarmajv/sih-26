@@ -13,6 +13,7 @@ from app.api.routes.context import router as context_router
 from app.api.routes.evidence import router as evidence_router
 from app.api.routes.graph import router as graph_router
 from app.api.routes.health import router as health_router
+from app.api.routes.resolution import router as resolution_router
 from app.core.config import settings
 from app.infrastructure.logging import CorrelationIdMiddleware, configure_logging
 
@@ -34,3 +35,4 @@ app.include_router(auth_router)
 app.include_router(context_router)
 app.include_router(evidence_router)
 app.include_router(graph_router)
+app.include_router(resolution_router)

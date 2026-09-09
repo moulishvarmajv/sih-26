@@ -52,5 +52,33 @@ class GraphRepository(Protocol):
         `evidence_ids`, when given, restricts the result to observations derived
         from those evidence items — the caller has already decided which ones
         this reader is allowed to see.
+
+        Inferred links are not returned here: they are derived from *two*
+        evidence items, so a scope built for single-evidence observations cannot
+        authorize them. They are served by the entity resolution API, which
+        authorizes both sides.
+        """
+        ...
+
+    def fetch_inferred_links(
+        self, case_id: str, resolution_ids: Sequence[str] | None = None
+    ) -> tuple[GraphRelationship, ...]:
+        """Return the INFERRED_SAME_ENTITY links written for one case.
+
+        Separate from `fetch_case_graph` on purpose: an inference is not an
+        observation, and reading one requires authorizing every evidence item it
+        was derived from.
+        """
+        ...
+
+    def update_inferred_link_status(
+        self, resolution_id: str, status: str, updated_at: str
+    ) -> int:
+        """Restate the status of the inferred links for one resolution.
+
+        The single mutation this interface permits, and it is confined to
+        INFERRED_SAME_ENTITY: an inference can be rejected or superseded, so its
+        status is not a fact frozen at write time. Observations remain
+        write-once — no method here can alter one.
         """
         ...

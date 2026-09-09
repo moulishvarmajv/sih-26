@@ -49,6 +49,13 @@ RELATIONSHIP_INDEXES: tuple[tuple[RelationshipType, str], ...] = (
     (RelationshipType.USES, "case_id"),
     (RelationshipType.OBSERVED_IN, "case_id"),
     (RelationshipType.BELONGS_TO, "case_id"),
+    (RelationshipType.INFERRED_SAME_ENTITY, "case_id"),
+)
+
+#: Inferred links are looked up by the resolution that produced them, so a
+#: rejection or supersession can restate exactly those edges and no others.
+INFERRED_LINK_INDEXES: tuple[tuple[RelationshipType, str], ...] = (
+    (RelationshipType.INFERRED_SAME_ENTITY, "resolution_id"),
 )
 
 _PROVENANCE_KEYS = (
@@ -72,7 +79,7 @@ def constraint_statements() -> list[str]:
             f"CREATE CONSTRAINT {name} IF NOT EXISTS "
             f"FOR (n:{label.value}) REQUIRE n.{key} IS UNIQUE"
         )
-    for relationship, prop in RELATIONSHIP_INDEXES:
+    for relationship, prop in RELATIONSHIP_INDEXES + INFERRED_LINK_INDEXES:
         name = f"index_{relationship.value.lower()}_{prop}"
         statements.append(
             f"CREATE INDEX {name} IF NOT EXISTS "
@@ -211,6 +218,10 @@ class Neo4jGraphRepository:
         rows = self._run(
             "MATCH (a)-[r]->(b) "
             "WHERE r.case_id = $case_id "
+            # An inference is derived from two evidence items, so an
+            # evidence-scoped read cannot authorize it. Excluded by type rather
+            # than by scope, so the exclusion holds even for an unscoped read.
+            "  AND type(r) <> $inferred "
             "  AND ($restrict = false OR r.evidence_id IN $evidence_ids) "
             "RETURN labels(a) AS start_labels, properties(a) AS start_props, "
             "       labels(b) AS end_labels, properties(b) AS end_props, "
@@ -220,6 +231,7 @@ class Neo4jGraphRepository:
                 "case_id": case_id,
                 "restrict": restrict,
                 "evidence_ids": list(evidence_ids or ()),
+                "inferred": RelationshipType.INFERRED_SAME_ENTITY.value,
             },
         )
 
@@ -234,6 +246,50 @@ class Neo4jGraphRepository:
             nodes.setdefault((end.label, end.key), end)
             relationships.append(_to_relationship(row, start.ref, end.ref))
         return GraphSnapshot(tuple(nodes.values()), tuple(relationships))
+
+    def fetch_inferred_links(
+        self, case_id: str, resolution_ids: Sequence[str] | None = None
+    ) -> tuple[GraphRelationship, ...]:
+        restrict = resolution_ids is not None
+        rows = self._run(
+            f"MATCH (a)-[r:{RelationshipType.INFERRED_SAME_ENTITY.value}]->(b) "
+            "WHERE r.case_id = $case_id "
+            "  AND ($restrict = false OR r.resolution_id IN $resolution_ids) "
+            "RETURN labels(a) AS start_labels, properties(a) AS start_props, "
+            "       labels(b) AS end_labels, properties(b) AS end_props, "
+            "       type(r) AS rel_type, properties(r) AS rel_props "
+            "ORDER BY r.observation_id",
+            {
+                "case_id": case_id,
+                "restrict": restrict,
+                "resolution_ids": list(resolution_ids or ()),
+            },
+        )
+        links: list[GraphRelationship] = []
+        for row in rows:
+            start = _to_node(row["start_labels"], row["start_props"])
+            end = _to_node(row["end_labels"], row["end_props"])
+            if start is None or end is None:
+                continue
+            links.append(_to_relationship(row, start.ref, end.ref))
+        return tuple(links)
+
+    def update_inferred_link_status(
+        self, resolution_id: str, status: str, updated_at: str
+    ) -> int:
+        """Restate the status of one resolution's inferred links.
+
+        Scoped to the relationship type in the MATCH itself, so this cannot
+        reach an observation however it is called.
+        """
+        rows = self._run(
+            f"MATCH ()-[r:{RelationshipType.INFERRED_SAME_ENTITY.value}]->() "
+            "WHERE r.resolution_id = $resolution_id "
+            "SET r.status = $status, r.status_updated_at = $updated_at "
+            "RETURN count(r) AS updated",
+            {"resolution_id": resolution_id, "status": status, "updated_at": updated_at},
+        )
+        return int(rows[0]["updated"]) if rows else 0
 
 
 def _is_connectivity_error(exc: Exception) -> bool:
@@ -280,6 +336,15 @@ def _to_node(labels: list[str], properties: dict[str, Any]) -> GraphNode | None:
 def _to_relationship(
     row: dict[str, Any], start: NodeRef, end: NodeRef
 ) -> GraphRelationship:
+    """Rebuild one relationship, splitting provenance out only where it exists.
+
+    An observation carries a single evidence version, so those properties are
+    lifted into a GraphProvenance and removed from the property map. An inferred
+    link has no single source version — it names both — so its `case_id` and
+    `trust_class` are properties in their own right and stay where they are.
+    Stripping them unconditionally would drop the very field that marks the edge
+    INFERRED.
+    """
     properties = dict(row["rel_props"])
     provenance = None
     if "evidence_id" in properties:
@@ -296,11 +361,12 @@ def _to_relationship(
             trust_class=trust,
             processing_run_id=properties.get("processing_run_id"),
         )
+        properties = {k: v for k, v in properties.items() if k not in _PROVENANCE_KEYS}
     return GraphRelationship(
         type=RelationshipType(row["rel_type"]),
         start=start,
         end=end,
         observation_id=properties.get("observation_id", ""),
-        properties={k: v for k, v in properties.items() if k not in _PROVENANCE_KEYS},
+        properties=properties,
         provenance=provenance,
     )

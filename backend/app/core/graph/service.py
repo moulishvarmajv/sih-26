@@ -22,7 +22,7 @@ from app.core.domain.case import Case
 from app.core.domain.identity import User
 from app.core.evidence.object_store import EvidenceObjectStore
 from app.core.evidence.repository import EvidenceRepository
-from app.core.graph.mapping import CdrGraphMapper
+from app.core.graph.mapping import CdrGraphMapper, GraphMapper
 from app.core.graph.models import GraphNode, GraphRelationship, GraphSnapshot, NodeLabel
 from app.core.graph.repository import GraphRepository, GraphUnavailable
 from app.infrastructure.clock import utc_now_iso
@@ -58,6 +58,10 @@ class GraphIngestionSummary:
     evidence_processed: int
     nodes_written: int
     relationships_written: int
+    #: Evidence from a source with no registered mapper. Counted rather than
+    #: guessed at or silently dropped: a source without a mapping has no graph
+    #: projection yet, and pretending otherwise would invent structure.
+    evidence_skipped: int = 0
 
 
 @dataclass(frozen=True)
@@ -80,7 +84,7 @@ class GraphService:
         security: SecurityService,
         event_store: EventStore,
         privacy: PrivacyPolicy,
-        mapper: CdrGraphMapper | None = None,
+        mappers: Mapping[str, GraphMapper] | None = None,
         clock: Callable[[], str] = utc_now_iso,
     ) -> None:
         self._graph = graph_repository
@@ -89,7 +93,13 @@ class GraphService:
         self._security = security
         self._events = event_store
         self._privacy = privacy
-        self._mapper = mapper or CdrGraphMapper()
+        # Mappers are keyed by the source id that produced the evidence, so
+        # adding a source does not mean touching this service.
+        self._mappers: dict[str, GraphMapper] = (
+            dict(mappers)
+            if mappers is not None
+            else {CdrGraphMapper.source_type: CdrGraphMapper()}
+        )
         self._clock = clock
 
     # -- ingestion --------------------------------------------------------
@@ -107,15 +117,19 @@ class GraphService:
             {"evidence_count": len(records)},
         )
 
-        nodes_written = relationships_written = processed = 0
+        nodes_written = relationships_written = processed = skipped = 0
         try:
             self._graph.initialize_schema()
             for record in records:
                 version = self._evidence.get_latest_version(record.id)
                 if version is None:
                     continue
+                mapper = self._mappers.get(record.source_id)
+                if mapper is None:
+                    skipped += 1
+                    continue
                 payload = json.loads(self._objects.get(version.payload_ref))
-                snapshot = self._mapper.map(record, version, payload)
+                snapshot = mapper.map(record, version, payload)
                 nodes_written += self._graph.upsert_nodes(snapshot.nodes)
                 relationships_written += self._graph.upsert_relationships(
                     snapshot.relationships
@@ -138,11 +152,14 @@ class GraphService:
             correlation_id,
             {
                 "evidence_processed": processed,
+                "evidence_skipped": skipped,
                 "nodes_written": nodes_written,
                 "relationships_written": relationships_written,
             },
         )
-        return GraphIngestionSummary(case.id, processed, nodes_written, relationships_written)
+        return GraphIngestionSummary(
+            case.id, processed, nodes_written, relationships_written, skipped
+        )
 
     # -- authorized read --------------------------------------------------
 

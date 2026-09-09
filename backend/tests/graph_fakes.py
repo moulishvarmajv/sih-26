@@ -14,6 +14,7 @@ from app.core.graph.models import (
     GraphRelationship,
     GraphSnapshot,
     NodeLabel,
+    RelationshipType,
 )
 from app.core.graph.repository import GraphUnavailable
 
@@ -57,7 +58,11 @@ class InMemoryGraphRepository:
         matched = [
             relationship
             for relationship in self.relationships.values()
-            if relationship.provenance is not None
+            # Inferred links are excluded by type here for the same reason the
+            # Cypher excludes them: they are derived from two evidence items,
+            # so an evidence-scoped read cannot authorize them.
+            if relationship.type is not RelationshipType.INFERRED_SAME_ENTITY
+            and relationship.provenance is not None
             and relationship.provenance.case_id == case_id
             and (allowed is None or relationship.provenance.evidence_id in allowed)
         ]
@@ -68,3 +73,41 @@ class InMemoryGraphRepository:
             if (ref.label, ref.key) in self.nodes
         )
         return GraphSnapshot(nodes=nodes, relationships=tuple(matched))
+
+    def fetch_inferred_links(
+        self, case_id: str, resolution_ids: Sequence[str] | None = None
+    ) -> tuple[GraphRelationship, ...]:
+        self._check()
+        allowed = None if resolution_ids is None else set(resolution_ids)
+        return tuple(
+            relationship
+            for relationship in self.relationships.values()
+            if relationship.type is RelationshipType.INFERRED_SAME_ENTITY
+            and relationship.properties.get("case_id") == case_id
+            and (allowed is None or relationship.properties.get("resolution_id") in allowed)
+        )
+
+    def update_inferred_link_status(
+        self, resolution_id: str, status: str, updated_at: str
+    ) -> int:
+        """Restates status on inferred links only; observations stay write-once."""
+        self._check()
+        updated = 0
+        for observation_id, relationship in list(self.relationships.items()):
+            if relationship.type is not RelationshipType.INFERRED_SAME_ENTITY:
+                continue
+            if relationship.properties.get("resolution_id") != resolution_id:
+                continue
+            properties = dict(relationship.properties)
+            properties["status"] = status
+            properties["status_updated_at"] = updated_at
+            self.relationships[observation_id] = GraphRelationship(
+                type=relationship.type,
+                start=relationship.start,
+                end=relationship.end,
+                observation_id=relationship.observation_id,
+                properties=properties,
+                provenance=relationship.provenance,
+            )
+            updated += 1
+        return updated

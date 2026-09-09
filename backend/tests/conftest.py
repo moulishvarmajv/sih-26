@@ -24,18 +24,24 @@ INVESTIGATOR = Role(
         "ANALYZE_EVIDENCE",
         "REANALYZE_EVIDENCE",
         "VIEW_GRAPH",
+        "RUN_ENTITY_RESOLUTION",
+        "VIEW_ENTITY_RESOLUTION",
+        "REVIEW_ENTITY_RESOLUTION",
     ),
 )
 ANALYST = Role(
     id="ROLE-ANALYST",
     name="ANALYST",
-    # No REANALYZE_EVIDENCE: analysts read and analyse, they do not reprocess.
+    # No REANALYZE_EVIDENCE and no REVIEW_ENTITY_RESOLUTION: analysts read and
+    # analyse, they neither reprocess evidence nor rule on an identity claim.
     permissions=(
         "VIEW_CASE",
         "VIEW_EVIDENCE",
         "SWITCH_AGENCY_CONTEXT",
         "ANALYZE_EVIDENCE",
         "VIEW_GRAPH",
+        "RUN_ENTITY_RESOLUTION",
+        "VIEW_ENTITY_RESOLUTION",
     ),
 )
 

@@ -24,11 +24,14 @@ from app.core.domain.identity import User
 from app.core.evidence.analysis import CdrSummaryAnalyzer
 from app.core.evidence.service import EvidenceService
 from app.core.graph.service import GraphService
+from app.core.resolution.policy import ResolutionPolicy, load_resolution_policy
+from app.core.resolution.service import EntityResolutionService
 from app.infrastructure.local_object_store import LocalFileEvidenceObjectStore
 from app.infrastructure.neo4j_graph_repository import Neo4jGraphRepository
 from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
 from app.infrastructure.sqlite_event_store import SQLiteEventStore
 from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
+from app.infrastructure.sqlite_resolution_repository import SQLiteResolutionRepository
 from app.security.agencies import InMemoryAgencyDirectory
 from app.security.authentication import (
     AuthenticationService,
@@ -150,6 +153,30 @@ def get_graph_service() -> GraphService:
 
 
 @lru_cache(maxsize=1)
+def get_resolution_policy() -> ResolutionPolicy:
+    return load_resolution_policy()
+
+
+@lru_cache(maxsize=1)
+def get_resolution_repository() -> SQLiteResolutionRepository:
+    return SQLiteResolutionRepository(settings.INVESTIGATION_DB_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_resolution_service() -> EntityResolutionService:
+    return EntityResolutionService(
+        resolution_repository=get_resolution_repository(),
+        evidence_repository=get_evidence_repository(),
+        object_store=get_evidence_object_store(),
+        graph_repository=get_graph_repository(),
+        security=get_security_service(),
+        event_store=get_event_store(),
+        policy=get_resolution_policy(),
+        privacy=get_security_policy().privacy,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_security_service() -> SecurityService:
     policy = get_security_policy()
     return SecurityService(
@@ -177,6 +204,9 @@ CACHED_PROVIDERS = (
     get_evidence_service,
     get_graph_repository,
     get_graph_service,
+    get_resolution_policy,
+    get_resolution_repository,
+    get_resolution_service,
 )
 
 

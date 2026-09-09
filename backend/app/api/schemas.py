@@ -146,3 +146,107 @@ class ContextResponse(BaseModel):
     clearance_level: str
     department: str | None = None
     unit: str | None = None
+
+class MatchEvidenceDTO(BaseModel):
+    signal: str
+    attribute: str  # a field name; a signal never reports the value it compared
+    outcome: str
+    weight: float
+    contribution: float
+    similarity: float | None = None
+
+
+class ResolutionConflictDTO(BaseModel):
+    attribute: str
+    rule: str
+    penalty: float
+    blocks_auto_accept: bool
+    similarity: float | None = None
+
+
+class MatchExplanationDTO(BaseModel):
+    """Why a resolution came out the way it did, in machine-readable form."""
+
+    recommendation: str
+    score: float
+    evidence_weight: float  # how much was comparable, not how well it agreed
+    confidence: str
+    confidence_floor: float  # the band's lower bound, so the band is never a bare label
+    policy_version: str
+    reasons: list[str]
+    evidence: list[MatchEvidenceDTO]
+    conflicts: list[ResolutionConflictDTO]
+
+
+class ResolvedEntityDTO(BaseModel):
+    entity_ref: str  # opaque and stable; never the raw key, which may be masked
+    entity_type: str
+    label: str  # masked when the reader's evidence decision was PARTIAL
+    source_id: str
+    evidence_id: str
+    evidence_version_id: str
+    observed_at: str
+
+
+class ResolutionReviewDTO(BaseModel):
+    reviewer_id: str
+    action: str
+    reviewed_at: str
+    reason: str | None = None
+
+
+class CandidateOriginDTO(BaseModel):
+    """Why the pair was ever compared."""
+
+    candidate_id: str
+    blocking_strategy: str
+    blocking_key_attribute: str
+    created_at: str
+
+
+class EntityResolutionResponse(BaseModel):
+    resolution_id: str
+    lineage_id: str
+    resolution_version: int
+    case_id: str
+    entity_type: str
+    status: str
+    left: ResolvedEntityDTO
+    right: ResolvedEntityDTO
+    explanation: MatchExplanationDTO
+    policy_version: str
+    created_at: str
+    decided_at: str | None = None
+    decided_by: str | None = None
+    decision_actor: str | None = None  # SYSTEM or HUMAN, never conflated
+    decision_reason: str | None = None
+    superseded_by: str | None = None
+    trust_class: str  # always INFERRED: a resolution is never an observation
+    candidate: CandidateOriginDTO | None = None
+    reviews: list[ResolutionReviewDTO] = []
+    masked_fields: list[str] = []
+
+
+class EntityResolutionListResponse(BaseModel):
+    case_id: str
+    resolutions: list[EntityResolutionResponse]
+
+
+class ResolutionRunResponse(BaseModel):
+    case_id: str
+    policy_version: str
+    evidence_considered: int
+    evidence_excluded: int
+    observations: int
+    candidates: int
+    auto_accepted: int
+    review_required: int
+    unresolved: int
+    superseded: int
+    unchanged: int
+    links_projected: int
+    graph_available: bool
+
+
+class ResolutionReviewRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=512)

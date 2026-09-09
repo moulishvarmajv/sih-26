@@ -11,6 +11,7 @@ and nothing else. Relationships are scoped by the run's unique case id.
 """
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Sequence
 
 from app.core.config import settings
@@ -51,8 +52,15 @@ def build_repository() -> TrackingNeo4jGraphRepository:
     )
 
 
+@lru_cache(maxsize=1)
 def server_is_reachable() -> bool:
-    """Never raises: an unreachable server is a skip, not an error."""
+    """Never raises: an unreachable server is a skip, not an error.
+
+    Memoised because each integration module evaluates it at import time, and
+    against a closed port the probe costs a connection timeout — about five
+    seconds each, paid three times for an answer that cannot change within one
+    pytest process.
+    """
     try:
         repository = build_repository()
     except Exception:

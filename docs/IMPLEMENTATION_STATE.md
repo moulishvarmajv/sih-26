@@ -19,6 +19,7 @@ behaviour exercised against the real dependency, not a fake.
 | Neo4j knowledge graph: schema, idempotent ingestion, authorized read | VERIFIED LIVE | 8 integration tests against Neo4j 5 Community |
 | Entity resolution: normalization, blocking, scoring, review, lineage | IMPLEMENTED | 126 unit/service/API tests |
 | `INFERRED_SAME_ENTITY` projection and status restatement | VERIFIED LIVE | 9 integration tests against Neo4j 5 Community |
+| Full pipeline over HTTP: auth → case → evidence → graph → resolution → review | VERIFIED LIVE | 3 end-to-end tests against Neo4j 5 Community |
 | Graph ingestion trigger | PARTIALLY IMPLEMENTED | in-process only; no endpoint or scheduled job |
 | Staleness / invalidation | PARTIALLY IMPLEMENTED | direct-only; no dependency graph |
 | Multi-role context selection | PARTIALLY IMPLEMENTED | the user's first role is used |
@@ -31,7 +32,7 @@ behaviour exercised against the real dependency, not a fake.
 | Blockchain / integrity anchoring | NOT IMPLEMENTED | — |
 | Asyncio DAG task executor | NOT IMPLEMENTED | contract only |
 
-**384 tests**: 367 that need no external service, and 17 that need a reachable
+**387 tests**: 367 that need no external service, and 20 that need a reachable
 Neo4j and skip themselves when there is none.
 
 ## Completed
@@ -425,6 +426,24 @@ data persisting in named volumes across restarts and rebuilds.
 seeding, running the API, the four test categories and the failure modes worth
 recognising. No task runner or wrapper scripts were added: every workflow is a
 single command, and a script would only be another layer to keep in sync.
+
+**Suite runtime, investigated.** The suite went from ~22s (308 tests) to ~34s
+(387 tests), and one-off readings as high as 85s prompted a check for a
+regression. There is none. An identical, unmodified test file runs at 1.25-1.36s
+in both the pre- and post-hardening trees, so per-test cost did not change; the
+high readings came from a concurrent test run competing for the machine. The
+increase is the 79 added tests, which are disproportionately API and integration
+tests — the most expensive kind, because each builds four SQLite databases. The
+hotspot is SQLite file creation at ~15ms per database, not password hashing at
+2.1ms for three.
+
+Sharing one harness across a module was tried and reverted: it saves about ten
+seconds but produced cumulative interference between cases, since the sweeps and
+the state-changing tests contend over one global `dependency_overrides`.
+Isolation is what these suites exist to protect, so it was not traded for the
+ten seconds. Sixty sequential logins against one harness were checked first, to
+confirm the interference was a fixture artefact and not a defect in session
+handling; all sixty succeeded.
 
 **Not changed, deliberately.** No exception architecture redesign, no new
 endpoints, no dataset expansion, no authorization concepts, and no change to the

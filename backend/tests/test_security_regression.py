@@ -46,6 +46,15 @@ RESTRICTED_VALUES = (
 
 @pytest.fixture
 def wired(tmp_path, event_store, grants, policy):
+    """A harness of this test's own.
+
+    Deliberately function-scoped, including for the parametrised sweeps below.
+    Sharing one harness across a module runs about ten seconds faster and was
+    tried: it produced cumulative interference between cases, because the
+    sweeps and the state-changing tests contend over one global
+    `dependency_overrides`. Isolation is the property this suite exists to
+    protect, so it is not traded for the ten seconds.
+    """
     harness = build_api_harness(tmp_path, event_store, grants, policy)
     harness.cases.create(CASE)
     harness.evidence_service.ingest_from_source(CASE, SyntheticCDRSource())

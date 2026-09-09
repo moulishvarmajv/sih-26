@@ -2,113 +2,32 @@
 import json
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.api import dependencies as deps
 from app.core.audit.event_store import FlightRecorderEvent
 from app.core.domain.case import Case
-from app.core.evidence.analysis import CdrSummaryAnalyzer
-from app.core.evidence.service import EvidenceService
-from app.core.graph.service import GraphService
-from app.infrastructure.local_object_store import LocalFileEvidenceObjectStore
 from app.infrastructure.sources.synthetic_cdr import SyntheticCDRSource
-from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
-from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
-from app.main import app
-from app.security.authentication import AuthenticationService
-from app.security.authorization.policy_engine import ClearanceAuthorizationEngine
-from app.security.identity.local_provider import LocalIdentityProvider
-from app.security.identity.passwords import ScryptPasswordHasher
-from app.security.identity.seed import seed_development_identities
-from app.security.identity.user_store import SQLiteUserStore
-from app.security.service import SecurityService
-from app.security.session.store import SQLiteSessionStore
-from tests.graph_fakes import InMemoryGraphRepository
+from tests.api_harness import PASSWORD, build_api_harness
 
-PASSWORD = "dev-only-password"
 CASE = Case(id="CASE-001", agency_id="POLICE", title="Graph case", status="OPEN", security_level="L1")
 
 
 @pytest.fixture
 def wired(tmp_path, event_store, grants, policy):
-    hasher = ScryptPasswordHasher(n=2**8, r=8, p=1)
-    user_store = SQLiteUserStore(tmp_path / "identity.db")
-    session_store = SQLiteSessionStore(tmp_path / "identity.db")
-    seed_development_identities(user_store, hasher, PASSWORD, grants)
-
-    cases = SQLiteCaseRepository(tmp_path / "investigation.db")
-    evidence_repo = SQLiteEvidenceRepository(tmp_path / "investigation.db")
-    objects = LocalFileEvidenceObjectStore(tmp_path / "objects")
-    graph_repo = InMemoryGraphRepository()
-    cases.create(CASE)
-
-    security = SecurityService(
-        engine=ClearanceAuthorizationEngine(policy),
-        grants=grants,
-        event_store=event_store,
-        clearance_policy=policy.clearance,
-    )
-    evidence_service = EvidenceService(
-        repository=evidence_repo,
-        object_store=objects,
-        security=security,
-        event_store=event_store,
-        privacy=policy.privacy,
-        analyzers=(CdrSummaryAnalyzer(),),
-    )
-    graph_service = GraphService(
-        graph_repository=graph_repo,
-        evidence_repository=evidence_repo,
-        object_store=objects,
-        security=security,
-        event_store=event_store,
-        privacy=policy.privacy,
-    )
-    evidence_service.ingest_from_source(CASE, SyntheticCDRSource())
-    graph_service.ingest_case_evidence(CASE)
+    harness = build_api_harness(tmp_path, event_store, grants, policy)
+    harness.cases.create(CASE)
+    harness.evidence_service.ingest_from_source(CASE, SyntheticCDRSource())
+    harness.graph_service.ingest_case_evidence(CASE)
     grants.grant_case("USR-001", "POLICE", CASE.id, need_to_know=True)
 
-    auth = AuthenticationService(
-        identity_provider=LocalIdentityProvider(user_store, hasher),
-        session_store=session_store,
-        event_store=event_store,
-        clearance_policy=policy.clearance,
-        session_ttl_minutes=60,
-    )
-    app.dependency_overrides.update(
-        {
-            deps.get_authentication_service: lambda: auth,
-            deps.get_security_service: lambda: security,
-            deps.get_session_store: lambda: session_store,
-            deps.get_user_store: lambda: user_store,
-            deps.get_grant_repository: lambda: grants,
-            deps.get_event_store: lambda: event_store,
-            deps.get_security_policy: lambda: policy,
-            deps.get_case_repository: lambda: cases,
-            deps.get_evidence_repository: lambda: evidence_repo,
-            deps.get_evidence_object_store: lambda: objects,
-            deps.get_evidence_service: lambda: evidence_service,
-            deps.get_graph_repository: lambda: graph_repo,
-            deps.get_graph_service: lambda: graph_service,
-        }
-    )
-    client = TestClient(app)
-    client.graph_repo = graph_repo
+    client = harness.client
+    client.harness = harness
+    client.graph_repo = harness.graph_repo
     yield client
-    app.dependency_overrides.clear()
-    user_store.close()
-    session_store.close()
-    cases.close()
-    evidence_repo.close()
+    harness.close()
 
 
 def authenticate(client, username="dev.investigator"):
-    token = client.post(
-        "/auth/login", json={"username": username, "password": PASSWORD}
-    ).json()["token"]
-    headers = {"Authorization": f"Bearer {token}"}
-    client.post("/context/switch", json={"agency_id": "POLICE"}, headers=headers)
-    return headers
+    return client.harness.authenticate(username)
 
 
 def test_graph_requires_authentication(wired):

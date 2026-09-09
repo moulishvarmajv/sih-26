@@ -17,7 +17,7 @@ from app.api.dependencies import (
     get_security_service,
     get_session_store,
 )
-from app.api.errors import ApiError, forbidden
+from app.api.errors import AUTHENTICATED_ERRORS, ApiError, forbidden
 from app.api.schemas import ContextResponse, ContextSwitchRequest
 from app.core.domain.agency import Agency, AgencyContext
 from app.core.domain.identity import User
@@ -29,7 +29,11 @@ from app.security.session.store import SQLiteSessionStore
 router = APIRouter(tags=["context"])
 
 
-@router.post("/context/switch", response_model=ContextResponse)
+@router.post(
+    "/context/switch",
+    response_model=ContextResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def switch_context(
     payload: ContextSwitchRequest,
     session: Session = Depends(get_current_session),

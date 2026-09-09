@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping
 
 from app.core.audit.event_store import ActorType, EventDraft, EventStore, FlightRecorderEvent
 from app.core.domain.agency import AgencyContext
@@ -24,7 +24,7 @@ from app.core.evidence.object_store import EvidenceObjectStore
 from app.core.evidence.repository import EvidenceRepository
 from app.core.graph.mapping import CdrGraphMapper, GraphMapper
 from app.core.graph.models import GraphNode, GraphRelationship, GraphSnapshot, NodeLabel
-from app.core.graph.repository import GraphRepository, GraphUnavailable
+from app.core.graph.repository import GraphRepository
 from app.infrastructure.clock import utc_now_iso
 from app.security.privacy.masking import mask_payload
 from app.security.privacy.policy import PrivacyPolicy

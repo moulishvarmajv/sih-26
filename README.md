@@ -177,6 +177,13 @@ main (Production / Presentation Ready)
 
 ## 🚦 Getting Started
 
+> **This section describes the target deployment.** For what runs today, see
+> **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** — local setup, the Neo4j
+> lifecycle, seeding and the test suite. The backend and Neo4j are implemented
+> and start with `docker compose up -d`; there is no frontend service yet, so
+> nothing serves port 5173. [docs/IMPLEMENTATION_STATE.md](docs/IMPLEMENTATION_STATE.md)
+> tracks which subsystems exist.
+
 ### Prerequisites
 * **Python** >= 3.10
 * **Node.js** >= 18.x

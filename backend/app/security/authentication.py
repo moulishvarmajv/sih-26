@@ -20,7 +20,7 @@ from app.infrastructure.clock import parse_iso, utc_now_iso
 from app.infrastructure.logging import current_correlation_id
 from app.security.clearance.policy import ClearancePolicy
 from app.security.clearance.verification import ClearanceState, verify_clearance
-from app.security.identity.models import AuthenticationOutcome, Credentials
+from app.security.identity.models import Credentials
 from app.security.identity.provider import IdentityProvider
 from app.security.session.models import AuthenticationMethod, Session, SessionStatus
 from app.security.session.store import SessionStore

@@ -21,7 +21,14 @@ from app.api.dependencies import (
     get_current_user,
     get_resolution_service,
 )
-from app.api.errors import ApiError, forbidden, http_error
+from app.api.errors import (
+    AUTHENTICATED_ERRORS,
+    GRAPH_ERRORS,
+    RESOLUTION_REVIEW_ERRORS,
+    ApiError,
+    forbidden,
+    http_error,
+)
 from app.api.schemas import (
     CandidateOriginDTO,
     EntityResolutionListResponse,
@@ -83,7 +90,9 @@ def _require_case(cases: SQLiteCaseRepository, case_id: str) -> Case:
 
 
 @router.post(
-    "/cases/{case_id}/entity-resolution/run", response_model=ResolutionRunResponse
+    "/cases/{case_id}/entity-resolution/run",
+    response_model=ResolutionRunResponse,
+    responses={**AUTHENTICATED_ERRORS, **GRAPH_ERRORS},
 )
 def run_resolution(
     case_id: str,
@@ -105,10 +114,18 @@ def run_resolution(
     return _run_response(summary)
 
 
-@router.get("/cases/{case_id}/entity-resolution", response_model=EntityResolutionListResponse)
+@router.get(
+    "/cases/{case_id}/entity-resolution",
+    response_model=EntityResolutionListResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def list_resolutions(
     case_id: str,
-    status_filter: str | None = None,
+    # Typed as the enum so FastAPI validates it and documents the allowed
+    # values. An unknown value is a 422 about the request, not a denial —
+    # reporting it as RESOLUTION_ACCESS_DENIED conflated a typo with a
+    # security outcome and made both harder to read.
+    status_filter: ResolutionStatus | None = None,
     user: User = Depends(get_current_user),
     context: AgencyContext | None = Depends(get_current_agency_context),
     cases: SQLiteCaseRepository = Depends(get_case_repository),
@@ -116,12 +133,7 @@ def list_resolutions(
 ) -> EntityResolutionListResponse:
     """Read existing resolutions. Never resolves anything."""
     case = _require_case(cases, case_id)
-    statuses = None
-    if status_filter:
-        try:
-            statuses = [ResolutionStatus(status_filter)]
-        except ValueError:
-            raise http_error(ApiError.RESOLUTION_ACCESS_DENIED, 400) from None
+    statuses = [status_filter] if status_filter is not None else None
     try:
         views = service.list_resolutions(user, _require_context(context), case, statuses)
     except ResolutionAccessDenied:
@@ -134,6 +146,7 @@ def list_resolutions(
 @router.get(
     "/cases/{case_id}/entity-resolution/{resolution_id}",
     response_model=EntityResolutionResponse,
+    responses=AUTHENTICATED_ERRORS,
 )
 def get_resolution(
     case_id: str,
@@ -156,6 +169,7 @@ def get_resolution(
 @router.post(
     "/cases/{case_id}/entity-resolution/{resolution_id}/approve",
     response_model=EntityResolutionResponse,
+    responses={**AUTHENTICATED_ERRORS, **RESOLUTION_REVIEW_ERRORS},
 )
 def approve_resolution(
     case_id: str,
@@ -174,6 +188,7 @@ def approve_resolution(
 @router.post(
     "/cases/{case_id}/entity-resolution/{resolution_id}/reject",
     response_model=EntityResolutionResponse,
+    responses={**AUTHENTICATED_ERRORS, **RESOLUTION_REVIEW_ERRORS},
 )
 def reject_resolution(
     case_id: str,
@@ -192,6 +207,7 @@ def reject_resolution(
 @router.post(
     "/cases/{case_id}/entity-resolution/{resolution_id}/defer",
     response_model=EntityResolutionResponse,
+    responses={**AUTHENTICATED_ERRORS, **RESOLUTION_REVIEW_ERRORS},
 )
 def defer_resolution(
     case_id: str,

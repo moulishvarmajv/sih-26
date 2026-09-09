@@ -6,8 +6,11 @@ trace, and nothing that distinguishes "no such user" from "wrong password".
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any
 
 from fastapi import HTTPException, status
+
+from app.api.schemas import ErrorResponse
 
 
 class ApiError(str, Enum):
@@ -38,3 +41,26 @@ def unauthorized(error: ApiError) -> HTTPException:
 
 def forbidden(error: ApiError) -> HTTPException:
     return http_error(error, status.HTTP_403_FORBIDDEN)
+
+
+def _documented(*codes: int) -> dict[int | str, dict[str, Any]]:
+    """Declare the error body in OpenAPI, so a client is not guessing its shape."""
+    return {code: {"model": ErrorResponse} for code in codes}
+
+
+#: Every route behind the session boundary can answer with these.
+AUTHENTICATED_ERRORS = _documented(
+    status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN
+)
+
+#: Reading an analysis that has never been computed.
+ANALYSIS_ERRORS = _documented(status.HTTP_404_NOT_FOUND)
+
+#: The graph backend being unreachable is a 503, not a failure of the request.
+GRAPH_ERRORS = _documented(status.HTTP_503_SERVICE_UNAVAILABLE)
+
+#: Deciding a resolution that is no longer awaiting review.
+RESOLUTION_REVIEW_ERRORS = _documented(status.HTTP_409_CONFLICT)
+
+#: Login answers 401 for every failure mode, so none of them can be told apart.
+LOGIN_ERRORS = _documented(status.HTTP_401_UNAUTHORIZED)

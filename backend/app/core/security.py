@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-from typing import Optional
 
 def hash_file_sha256(data: bytes) -> str:
     """Generate SHA-256 hash for forensic digital evidence."""

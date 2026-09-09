@@ -18,7 +18,6 @@ import uuid
 
 import pytest
 
-from app.core.config import settings
 from app.core.evidence.models import (
     EvidenceRecord,
     EvidenceState,
@@ -47,7 +46,7 @@ from app.core.resolution.models import (
     resolution_id_for,
     resolution_lineage,
 )
-from app.infrastructure.neo4j_graph_repository import Neo4jGraphRepository
+from tests.neo4j_support import SKIP_REASON, build_repository, cleanup, server_is_reachable
 
 POLICY = "resolution-1.0.0"
 
@@ -67,48 +66,24 @@ CDR_PAYLOAD = {
 }
 
 
-def _repository() -> Neo4jGraphRepository:
-    return Neo4jGraphRepository(
-        uri=settings.NEO4J_URI,
-        user=settings.NEO4J_USER,
-        password=settings.NEO4J_PASSWORD,
-        database=settings.NEO4J_DATABASE,
-        connection_timeout=3.0,
-    )
-
-
-def _reachable() -> bool:
-    try:
-        repository = _repository()
-        available = repository.is_available()
-        repository.close()
-        return available
-    except Exception:
-        return False
-
-
-pytestmark = pytest.mark.skipif(
-    not _reachable(), reason="no reachable Neo4j at NEO4J_URI; start it with docker compose"
-)
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(not server_is_reachable(), reason=SKIP_REASON),
+]
 
 
 @pytest.fixture
 def case_id():
+    """A case id unique to this test, so runs cannot see each other's data."""
     return f"CASE-ER-IT-{uuid.uuid4().hex[:8].upper()}"
 
 
 @pytest.fixture
 def repository(case_id):
-    repo = _repository()
+    repo = build_repository()
     repo.initialize_schema()
     yield repo
-    # Remove only this run's subgraph.
-    repo._run("MATCH ()-[r]-() WHERE r.case_id = $case_id DELETE r", {"case_id": case_id})
-    repo._run("MATCH (c:Case {case_id: $case_id}) DETACH DELETE c", {"case_id": case_id})
-    repo._run("MATCH (n) WHERE NOT (n)--() AND n.msisdn IS NOT NULL DELETE n")
-    repo._run("MATCH (n:Person) WHERE NOT (n)--() AND n.person_id STARTS WITH 'IT-' DELETE n")
-    repo._run("MATCH (n:Person) WHERE NOT (n)--() AND n.person_id STARTS WITH 'SUB-IT-' DELETE n")
-    repo._run("MATCH (n:Device) WHERE NOT (n)--() DELETE n")
+    cleanup(repo, case_id)
     repo.close()
 
 

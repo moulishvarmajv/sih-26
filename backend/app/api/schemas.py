@@ -9,6 +9,16 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class ErrorDetail(BaseModel):
+    """The body of every error response: a stable code and nothing else."""
+
+    error: str
+
+
+class ErrorResponse(BaseModel):
+    detail: ErrorDetail
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=128)
     password: str = Field(min_length=1, max_length=256)

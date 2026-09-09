@@ -9,7 +9,7 @@ returns ANALYSIS_NOT_AVAILABLE rather than quietly starting a run.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies import (
     get_case_repository,
@@ -17,7 +17,7 @@ from app.api.dependencies import (
     get_current_user,
     get_evidence_service,
 )
-from app.api.errors import ApiError, forbidden, http_error
+from app.api.errors import ANALYSIS_ERRORS, AUTHENTICATED_ERRORS, ApiError, forbidden, http_error
 from app.api.schemas import (
     AnalysisResultResponse,
     EvidenceListResponse,
@@ -55,7 +55,11 @@ def _require_case(cases: SQLiteCaseRepository, case_id: str) -> Case:
     return case
 
 
-@router.get("/cases/{case_id}/evidence", response_model=EvidenceListResponse)
+@router.get(
+    "/cases/{case_id}/evidence",
+    response_model=EvidenceListResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def list_case_evidence(
     case_id: str,
     user: User = Depends(get_current_user),
@@ -73,7 +77,11 @@ def list_case_evidence(
     )
 
 
-@router.get("/evidence/{evidence_id}", response_model=EvidenceViewResponse)
+@router.get(
+    "/evidence/{evidence_id}",
+    response_model=EvidenceViewResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def view_evidence(
     evidence_id: str,
     case_id: str,
@@ -95,7 +103,11 @@ def view_evidence(
     return _view_response(view)
 
 
-@router.get("/evidence/{evidence_id}/versions", response_model=EvidenceVersionsResponse)
+@router.get(
+    "/evidence/{evidence_id}/versions",
+    response_model=EvidenceVersionsResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def list_versions(
     evidence_id: str,
     case_id: str,
@@ -129,7 +141,11 @@ def list_versions(
     )
 
 
-@router.get("/evidence/{evidence_id}/analysis", response_model=AnalysisResultResponse)
+@router.get(
+    "/evidence/{evidence_id}/analysis",
+    response_model=AnalysisResultResponse,
+    responses={**AUTHENTICATED_ERRORS, **ANALYSIS_ERRORS},
+)
 def get_analysis(
     evidence_id: str,
     case_id: str,
@@ -150,11 +166,15 @@ def get_analysis(
     except EvidenceNotFound:
         raise forbidden(ApiError.EVIDENCE_ACCESS_DENIED) from None
     if view is None:
-        raise http_error(ApiError.ANALYSIS_NOT_AVAILABLE, 404)
+        raise http_error(ApiError.ANALYSIS_NOT_AVAILABLE, status.HTTP_404_NOT_FOUND)
     return _analysis_response(view)
 
 
-@router.post("/evidence/{evidence_id}/analyze", response_model=AnalysisResultResponse)
+@router.post(
+    "/evidence/{evidence_id}/analyze",
+    response_model=AnalysisResultResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def analyze(
     evidence_id: str,
     case_id: str,
@@ -177,7 +197,11 @@ def analyze(
     return _analysis_response(view)
 
 
-@router.post("/evidence/{evidence_id}/reanalyze", response_model=AnalysisResultResponse)
+@router.post(
+    "/evidence/{evidence_id}/reanalyze",
+    response_model=AnalysisResultResponse,
+    responses=AUTHENTICATED_ERRORS,
+)
 def reanalyze(
     evidence_id: str,
     case_id: str,

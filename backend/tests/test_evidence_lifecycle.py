@@ -18,7 +18,6 @@ from app.core.evidence.source import EvidenceSourceError, SourceEvidence
 from app.infrastructure.local_object_store import LocalFileEvidenceObjectStore
 from app.infrastructure.sources.synthetic_cdr import SyntheticCDRSource, normalise_record
 from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
-from app.security.authorization.policy_engine import ClearanceAuthorizationEngine
 from app.security.service import SecurityService
 from tests.conftest import POLICE, make_case, make_context, make_user
 

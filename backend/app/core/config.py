@@ -1,16 +1,35 @@
+"""Application configuration.
+
+Every setting here is read by something. A knob that looks configurable but is
+never consulted is worse than no knob at all — it invites someone to change it
+and conclude the system ignored them — so unused settings are removed rather
+than kept "for later".
+
+Unknown keys are rejected (`extra="forbid"`). A typo in `NEO4J_PASSWORD` should
+stop startup, not silently fall back to a default; the same fail-closed
+reasoning the authorization engine uses. The consequence is that `.env` may
+contain only the fields defined below, which `tests/test_config_secrets.py`
+holds `.env.example` to.
+"""
 import logging
 import secrets
 
 from pydantic import model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 logger = logging.getLogger(__name__)
 
+
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file=".env",
+        extra="forbid",
+    )
+
     PROJECT_NAME: str = "SHADOW-INTEL"
     PROJECT_VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"  # development | staging | production
 
     # Security & CORS.
@@ -26,9 +45,6 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
-    # Graph & Storage Settings
-    DATA_DIR: str = "data"
-
     # Knowledge Graph (Neo4j) — local/open-source instance only, never managed cloud
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
@@ -42,16 +58,13 @@ class Settings(BaseSettings):
     IDENTITY_DB_PATH: str = "data/identity.db"
     SESSION_TTL_MINUTES: int = 60
 
-    # Investigation state: cases and evidence metadata (SQLite), with raw
-    # evidence payloads kept out of the database in a local object store
+    # Investigation state: cases, evidence metadata and entity-resolution
+    # decisions (SQLite), with raw evidence payloads kept out of the database in
+    # a local object store
     INVESTIGATION_DB_PATH: str = "data/investigation.db"
     EVIDENCE_OBJECT_ROOT: str = "data/evidence_objects"
 
-    # JWT placeholder configuration (sessions currently use opaque bearer tokens)
-    JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-    # Clearance policy configuration
+    # Clearance and privacy policy
     CLEARANCE_POLICY_PATH: str = "app/security/policy/clearance_policy.json"
 
     # Entity resolution policy: matching weights, thresholds and conflict rules
@@ -59,13 +72,6 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
-
-    # Agency plugin configuration
-    ENABLED_PLUGINS: List[str] = ["police", "cybercrime", "financial_crime"]
-
-    # Blockchain / Cryptography Settings
-    BLOCKCHAIN_NETWORK: str = "Ethereum / Hyperledger Besu (Local / Testnet)"
-    ENABLE_MOCK_LEDGER: bool = True
 
     @model_validator(mode="after")
     def _require_secret_key(self) -> "Settings":
@@ -81,8 +87,5 @@ class Settings(BaseSettings):
         )
         return self
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
 
 settings = Settings()

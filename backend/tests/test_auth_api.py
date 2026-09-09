@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api import dependencies as deps
-from app.api.routes.auth import router as auth_router
 from app.core.audit.event_store import FlightRecorderEvent
 from app.main import app
 from app.security.authentication import AuthenticationService

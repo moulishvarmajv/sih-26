@@ -16,7 +16,7 @@ from app.api.dependencies import (
     get_grant_repository,
     get_security_policy,
 )
-from app.api.errors import ApiError, unauthorized
+from app.api.errors import AUTHENTICATED_ERRORS, LOGIN_ERRORS, ApiError, unauthorized
 from app.api.schemas import (
     AgencyResponse,
     ClearanceResponse,
@@ -38,7 +38,7 @@ from app.security.session.models import Session
 router = APIRouter(tags=["auth"])
 
 
-@router.post("/auth/login", response_model=LoginResponse)
+@router.post("/auth/login", response_model=LoginResponse, responses=LOGIN_ERRORS)
 def login(
     payload: LoginRequest,
     auth: AuthenticationService = Depends(get_authentication_service),
@@ -59,7 +59,7 @@ def login(
     )
 
 
-@router.get("/me", response_model=MeResponse)
+@router.get("/me", response_model=MeResponse, responses=AUTHENTICATED_ERRORS)
 def me(
     session: Session = Depends(get_current_session),
     user: User = Depends(get_current_user),

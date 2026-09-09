@@ -16,7 +16,7 @@ from app.api.dependencies import (
     get_current_user,
     get_graph_service,
 )
-from app.api.errors import ApiError, forbidden, http_error
+from app.api.errors import AUTHENTICATED_ERRORS, GRAPH_ERRORS, ApiError, forbidden, http_error
 from app.api.schemas import (
     GraphNodeDTO,
     GraphProvenanceDTO,
@@ -33,7 +33,11 @@ from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
 router = APIRouter(tags=["graph"])
 
 
-@router.get("/cases/{case_id}/graph", response_model=GraphResponse)
+@router.get(
+    "/cases/{case_id}/graph",
+    response_model=GraphResponse,
+    responses={**AUTHENTICATED_ERRORS, **GRAPH_ERRORS},
+)
 def get_case_graph(
     case_id: str,
     user: User = Depends(get_current_user),

@@ -1,0 +1,13 @@
+# Test and development dependencies.
+#
+# Kept out of requirements.txt so the container image carries no test tooling.
+# Install both for local work:
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+
+pytest>=8.0.0
+
+# The FastAPI TestClient is built on httpx.
+httpx>=0.27.0

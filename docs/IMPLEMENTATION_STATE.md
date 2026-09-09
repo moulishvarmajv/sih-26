@@ -2,6 +2,38 @@
 
 _Update as phases land — do not let this drift from reality._
 
+## Status at a glance
+
+Four levels, used consistently below. **VERIFIED LIVE** is reserved for
+behaviour exercised against the real dependency, not a fake.
+
+| Subsystem | Status | Evidence |
+|---|---|---|
+| Module boundaries, typed contracts, plugin registry | IMPLEMENTED | unit tests |
+| Flight Recorder event store (SQLite, append-only) | IMPLEMENTED | service tests |
+| Clearance / privacy policy as data | IMPLEMENTED | unit tests |
+| Authorization engine, SecurityService, agency context | IMPLEMENTED | decision-matrix + API tests |
+| Local authentication, sessions, `/auth/login`, `/me`, `/context/switch` | IMPLEMENTED | API tests |
+| Evidence lifecycle: VIEW / ANALYZE / REANALYZE, versions, runs, results | IMPLEMENTED | service + API tests |
+| Server-side privacy masking | IMPLEMENTED | evidence, graph and resolution API tests |
+| Neo4j knowledge graph: schema, idempotent ingestion, authorized read | VERIFIED LIVE | 8 integration tests against Neo4j 5 Community |
+| Entity resolution: normalization, blocking, scoring, review, lineage | IMPLEMENTED | 126 unit/service/API tests |
+| `INFERRED_SAME_ENTITY` projection and status restatement | VERIFIED LIVE | 9 integration tests against Neo4j 5 Community |
+| Graph ingestion trigger | PARTIALLY IMPLEMENTED | in-process only; no endpoint or scheduled job |
+| Staleness / invalidation | PARTIALLY IMPLEMENTED | direct-only; no dependency graph |
+| Multi-role context selection | PARTIALLY IMPLEMENTED | the user's first role is used |
+| Grant and agency persistence | PARTIALLY IMPLEMENTED | in-memory behind the protocols; reset on restart |
+| Graph analytics | NOT IMPLEMENTED | — |
+| Evidence Navigator | NOT IMPLEMENTED | — |
+| IMEI/IMSI analytics | NOT IMPLEMENTED | — |
+| Tower / spatio-temporal analytics | NOT IMPLEMENTED | — |
+| Frontend | NOT IMPLEMENTED | — |
+| Blockchain / integrity anchoring | NOT IMPLEMENTED | — |
+| Asyncio DAG task executor | NOT IMPLEMENTED | contract only |
+
+**384 tests**: 367 that need no external service, and 17 that need a reachable
+Neo4j and skip themselves when there is none.
+
 ## Completed
 
 ### Phase 1 — module boundaries and contracts
@@ -268,7 +300,7 @@ Together with the existing CDR export they cover:
 **Zero external spend.** Deterministic Python and the standard library. No LLM
 call, no paid AI service, no new runtime dependency, and no queue or scheduler.
 
-**Tests.** 308 passing, 126 of them new, covering normalization determinism,
+**Tests.** 308 passing at the close of Phase 6, 126 of them new, covering normalization determinism,
 blocking, exact and multi-signal matching, confidence derivation, ambiguity
 routing, conflict detection, absence of silent merges, INFERRED vs OBSERVED
 labelling, retained supporting evidence and policy version, approve/reject/defer,
@@ -304,9 +336,106 @@ in-memory fake could not see.
 - **The review queue has no assignment, priority or SLA,** and no notification —
   `REVIEW_REQUIRED` is a status, not a workflow.
 
+### Phase 6.5 — engineering hardening
+
+No new capability. An audit pass over what Phases 1-6 left behind, so the next
+phase starts from a foundation that is verified rather than assumed.
+
+**Configuration defects found and fixed.** `.env.example` had drifted from the
+code in two ways, and following its own instructions broke startup:
+
+- `CLEARANCE_POLICY_PATH` was `security/policy/clearance_policy.json`, missing
+  the `app/` prefix. Copying the file to `.env` made security-policy loading
+  fail at startup.
+- `DEV_SEED_PASSWORD` was documented as a `.env` key, but it is not a setting —
+  and settings reject unknown keys. Setting it as the file instructed produced
+  `ValidationError: Extra inputs are not permitted`.
+
+The file now documents exactly the settings that exist, `DEV_SEED_PASSWORD` is
+described as the process-environment variable it actually is, and
+`tests/test_config_secrets.py` loads the example file, resolves both policy
+paths from it, and asserts every key in it is a real setting. `extra="forbid"`
+is now explicit and documented rather than an inherited default: a typo in
+`NEO4J_PASSWORD` should stop startup, not silently fall back.
+
+**Dead configuration removed.** `API_V1_STR`, `JWT_ALGORITHM`,
+`JWT_ACCESS_TOKEN_EXPIRE_MINUTES`, `BLOCKCHAIN_NETWORK`, `ENABLE_MOCK_LEDGER`,
+`DATA_DIR` and `ENABLED_PLUGINS` were read by nothing. A knob that looks
+configurable but is never consulted invites someone to change it and conclude
+the system ignored them. A test now asserts every remaining setting appears
+somewhere outside `config.py`.
+
+**Pydantic deprecation cleared.** Class-based `Config` became
+`model_config = SettingsConfigDict(...)`. Behaviour is unchanged and the
+configuration tests cover it; the suite now emits no warning from our own code.
+
+**Dependencies trimmed.** `requirements.txt` installed `pandas`, `polars`,
+`numpy`, `scikit-learn`, `web3`, `pycryptodome`, `python-jose`, `passlib`,
+`requests`, `aiofiles` and `python-multipart` — none of which anything imports,
+and most of which were not installed in working environments at all. It now
+lists what the application imports; `requirements-dev.txt` carries `pytest` and
+`httpx`, so the container image no longer ships test tooling. Later phases add
+back what they actually need.
+
+**Test isolation defect found and fixed.** The Neo4j integration teardown
+deleted orphan nodes by a global sweep (`every orphan node with an msisdn`),
+which both reached outside the run and *missed* `Evidence` nodes entirely — 40
+orphans had accumulated in the local database across earlier runs. Cleanup is
+now precise: `tests/neo4j_support.py` records the nodes a run writes and deletes
+exactly those keys when they are left unreferenced, with relationships scoped by
+the run's unique case id. Verified: node count is identical before and after a
+full integration run.
+
+**Test infrastructure.** The three API suites had each copied the same ~60 lines
+of composition; `tests/api_harness.py` now wires the real stack once and each
+suite states only its own scenario. `pytest.ini` registers an `integration`
+marker, so a run can be scoped (`-m "not integration"`) rather than filtered by
+filename, and skips can be attributed. `test_smoke` reset a hardcoded list of
+cached providers that had already gone stale — it uses `reset_providers()`, and
+a new test asserts that function covers every cached provider.
+
+**Security regression audit.** `tests/test_security_regression.py` enumerates
+routes from the running application rather than from a hand-maintained list, so
+a route added later is covered the moment it exists. It asserts that every
+protected route refuses an anonymous caller and a forged token, that every
+case-scoped route requires an active agency context, that a reader in another
+agency cannot reach the case, that a revoked grant applies on the next request,
+that no error body carries evidence content, that login failure modes are
+indistinguishable, and that masking is applied server-side. It introduces no
+authorization concept — it pins down what Phases 2-6 already implement.
+
+**API contract.** Error responses now carry a documented schema
+(`ErrorResponse`), so a client is not guessing the `{"detail": {"error": ...}}`
+shape: every protected route documents 401/403, and the routes that can answer
+404, 409 or 503 document those too. `status_filter` on the resolution listing is
+typed as the enum, so an unknown value is a 422 about the request rather than
+`RESOLUTION_ACCESS_DENIED` — reporting a typo as a security outcome made both
+harder to read. One inconsistency is documented rather than changed: the
+`/evidence/...` routes take `case_id` as a query parameter while every other
+case-scoped route takes it in the path. Changing that is an API break, not
+hardening.
+
+**Docker.** The backend service gained a `/health` healthcheck using the stdlib
+(the image has no curl), and `SECRET_KEY`/`LOG_LEVEL` passthrough — without the
+former a production container would fail startup with no way to supply one.
+Neo4j's own configuration was left alone: verified healthy, zero restarts, with
+data persisting in named volumes across restarts and rebuilds.
+
+**Documentation.** `docs/DEVELOPMENT.md` covers setup, the Neo4j lifecycle,
+seeding, running the API, the four test categories and the failure modes worth
+recognising. No task runner or wrapper scripts were added: every workflow is a
+single command, and a script would only be another layer to keep in sync.
+
+**Not changed, deliberately.** No exception architecture redesign, no new
+endpoints, no dataset expansion, no authorization concepts, and no change to the
+module boundaries. `/ready` still does not probe Neo4j — the application is
+designed to serve every non-graph route with the graph down, so a readiness
+check that failed on an unreachable Neo4j would report a working process
+unhealthy, and would put a connection timeout on an endpoint orchestrators poll.
+
 ## In progress
 
-Nothing. Phase 6 is complete and committed.
+Nothing. Phase 6.5 is complete and committed.
 
 ## Explicitly NOT implemented
 
@@ -356,6 +485,7 @@ Do not start two of them in parallel.
 - **One graph mapper** (CDR). Subscriber-register evidence resolves but does not project into the graph; `GraphService` counts unmapped sources as skipped rather than guessing a projection. FIR, financial and ANPR sources have no mapping.
 - **No frontend.**
 - **No lint/type tooling** (ruff/mypy) is configured in the repo; validation is the test suite plus import checks.
+- **One third-party deprecation warning remains** and is outside this codebase: Starlette's `TestClient` reports that using it with `httpx` is deprecated. It affects tests only.
 
 ## Architecture notes carried forward
 

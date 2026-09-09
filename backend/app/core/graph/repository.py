@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Protocol, Sequence
 
-from app.core.graph.models import GraphNode, GraphRelationship, GraphSnapshot
+from app.core.graph.models import GraphNode, GraphPath, GraphRelationship, GraphSnapshot
 
 
 class GraphRepositoryError(Exception):
@@ -57,6 +57,28 @@ class GraphRepository(Protocol):
         evidence items, so a scope built for single-evidence observations cannot
         authorize them. They are served by the entity resolution API, which
         authorizes both sides.
+        """
+        ...
+
+    def find_shortest_path(
+        self,
+        case_id: str,
+        start_key: str,
+        end_key: str,
+        evidence_ids: Sequence[str] | None = None,
+        max_length: int = 6,
+    ) -> GraphPath | None:
+        """Return the shortest observed walk between two entities, or None.
+
+        Implemented here rather than above the boundary because the database can
+        answer it without the caller loading the graph: a bounded `shortestPath`
+        is one query, where fetching a case subgraph to walk it in Python would
+        scale with the case rather than with the answer.
+
+        `max_length` bounds the traversal, and `evidence_ids` scopes it to what
+        the caller has already decided this reader may see — an observation
+        outside that scope is not a usable step, so the path has to route around
+        it or not exist.
         """
         ...
 

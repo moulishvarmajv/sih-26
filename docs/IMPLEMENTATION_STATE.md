@@ -19,12 +19,15 @@ behaviour exercised against the real dependency, not a fake.
 | Neo4j knowledge graph: schema, idempotent ingestion, authorized read | VERIFIED LIVE | 8 integration tests against Neo4j 5 Community |
 | Entity resolution: normalization, blocking, scoring, review, lineage | IMPLEMENTED | 126 unit/service/API tests |
 | `INFERRED_SAME_ENTITY` projection and status restatement | VERIFIED LIVE | 9 integration tests against Neo4j 5 Community |
-| Full pipeline over HTTP: auth → case → evidence → graph → resolution → review | VERIFIED LIVE | 3 end-to-end tests against Neo4j 5 Community |
+| Full pipeline over HTTP: auth → case → evidence → graph → resolution → review | VERIFIED LIVE | 5 end-to-end tests against Neo4j 5 Community |
+| Graph analytics: connectivity, components, bridges, temporal concentration | IMPLEMENTED | 98 unit/service/API tests |
+| Bounded shortest path over the authorized graph | VERIFIED LIVE | Cypher exercised against Neo4j 5 Community |
+| Investigation signals with versioned history | IMPLEMENTED | service and repository tests |
 | Graph ingestion trigger | PARTIALLY IMPLEMENTED | in-process only; no endpoint or scheduled job |
 | Staleness / invalidation | PARTIALLY IMPLEMENTED | direct-only; no dependency graph |
 | Multi-role context selection | PARTIALLY IMPLEMENTED | the user's first role is used |
 | Grant and agency persistence | PARTIALLY IMPLEMENTED | in-memory behind the protocols; reset on restart |
-| Graph analytics | NOT IMPLEMENTED | — |
+| Transitive entity clustering | NOT IMPLEMENTED | — |
 | Evidence Navigator | NOT IMPLEMENTED | — |
 | IMEI/IMSI analytics | NOT IMPLEMENTED | — |
 | Tower / spatio-temporal analytics | NOT IMPLEMENTED | — |
@@ -32,7 +35,7 @@ behaviour exercised against the real dependency, not a fake.
 | Blockchain / integrity anchoring | NOT IMPLEMENTED | — |
 | Asyncio DAG task executor | NOT IMPLEMENTED | contract only |
 
-**387 tests**: 367 that need no external service, and 20 that need a reachable
+**511 tests**: 489 that need no external service, and 22 that need a reachable
 Neo4j and skip themselves when there is none.
 
 ## Completed
@@ -452,34 +455,243 @@ designed to serve every non-graph route with the graph down, so a readiness
 check that failed on an unreachable Neo4j would report a working process
 unhealthy, and would put a connection timeout on an endpoint orchestrators poll.
 
+### Phase 7A — graph analytics and investigation signals
+
+**What a signal is, and is not.** A signal is an observation about the *shape*
+of a case graph: which entities sit between otherwise separate groups, which are
+unusually well connected, which observations cluster in time. It is a place to
+look. There is no signal type, reason code or field in the model that describes
+a person's conduct, and a test asserts the vocabulary stays that way. A busy
+number is usually a busy number; the system says where the graph is dense and
+leaves the meaning to whoever reads the evidence.
+
+**Architecture.**
+
+```
+GraphAnalyticsService     authorization, orchestration, signals, audit
+  -> AnalysableGraph      the authorized, masked view — the only thing metrics see
+  -> metrics              pure, deterministic: degree, components, bridges, temporal
+  -> AnalyticsRepository  runs and signals, with history
+  -> GraphRepository      one query: the bounded shortest path
+       -> Neo4j
+```
+
+`Neo4jGraphRepository` gained no analytic logic. The service never receives a
+driver object, and the metrics never receive a `GraphSnapshot`.
+
+**Supported analytics.**
+
+| analytic | what it answers | where it runs |
+|---|---|---|
+| connectivity | degree, in/out-degree, distinct neighbours, rank within the case | service, over the authorized view |
+| connected components | how the case graph divides into groups, with type composition | service, union-find |
+| bridges | which entities hold otherwise separate groups together | service, articulation points |
+| temporal concentration | which windows carry unusually many observed events | service, fixed windows |
+| shortest path | the shortest observed walk between two entities | repository, one bounded Cypher query |
+
+Path finding is the one analytic pushed into the database, because the database
+can answer it without anyone loading the graph; a bounded `shortestPath` is one
+query where fetching the subgraph would scale with the case rather than with the
+answer. Everything structural is computed above the repository, over *one*
+authorized view, so two metrics can never disagree about the graph they
+described.
+
+**Why articulation points rather than betweenness centrality.** Betweenness
+yields a number. An articulation point yields a statement an investigator can
+check: *without this entity, these groups have no connection in the authorized
+graph*. Every signal in this phase has to be explainable, and a threshold on a
+centrality score is not an explanation. The signal reports how many regions the
+entity separates and how large each is.
+
+**What counts as a connection.** Analytics sees entities — Person, Phone,
+Device, and the Account and CellTower labels reserved for later — joined by
+`USES`, `INSERTED_IN` and `CALLED`. `Case` and `Evidence` nodes and their
+`OBSERVED_IN` / `BELONGS_TO` edges are provenance, not structure: two phones are
+not connected because they appeared in the same export. Including them made the
+export the densest node in every case and joined every group through it, which
+is an artefact an investigator would have to learn to ignore. Provenance is not
+lost — every relationship still names the evidence it came from.
+
+**Signal taxonomy.** `HIGH_CONNECTIVITY`, `CROSS_DOMAIN_BRIDGE`,
+`COMPONENT_STRUCTURE`, `TEMPORAL_CONCENTRATION`, `SHORTEST_PATH`. Reason codes
+are machine-stable and rendered by a client, never parsed as prose:
+`DEGREE_ABOVE_THRESHOLD`, `TOP_RANKED_CONNECTIVITY`, `REMOVAL_SEPARATES_GRAPH`,
+`CONNECTS_SEPARATE_GROUPS`, `SPANS_MULTIPLE_ENTITY_TYPES`,
+`RESTS_ON_SINGLE_WEAK_RELATIONSHIP`, `EVENTS_CONCENTRATED_IN_WINDOW`,
+`COMPONENT_IS_ISOLATED`, `PATH_FOUND`, `NO_PATH_WITHIN_LIMIT`.
+
+**Ranking, and what stops it being a hidden score.** A score is the sum of
+weighted contributions and never appears without them. Every metric carries its
+raw value, the policy saturation point that mapped it into [0, 1], the weight
+applied, and the resulting contribution — so "why did this rank first?" is
+answerable from the stored record alone. There is no universal score across
+signal types: each type is ranked against its own kind, and component structure
+is descriptive rather than ranked at all.
+
+The bridge ranking is worth naming, because the obvious version is wrong.
+Ranking by *how many* groups an entity separates puts a hub with four hangers-on
+above a phone holding two real groups apart. Ranking accounts for the largest
+region actually cut off, so the phone that is the sole link between two
+neighbourhood groups outranks one that merely has a leaf attached.
+
+**Policy as data** (`app/core/analytics/analytics_policy.json`, path from
+`ANALYTICS_POLICY_PATH`). Every weight, threshold, window and limit, with the
+`analytics_version` travelling on every result. Nothing in the metrics or the
+service compares a hard-coded number. Normalization is policy too: combining a
+degree with a count of entity types means mapping both into [0, 1] first, and
+the saturation points that do the mapping are exactly the judgement that should
+be visible rather than buried in an expression.
+
+**Temporal analysis.** Fixed windows (3600s by default), anchored at the
+earliest event in the authorized graph so the buckets depend on the data rather
+than on when the analysis ran. A window is a concentration when it holds at
+least `minimum_events_in_window` events *and* at least
+`concentration_multiple` times the mean over occupied windows. The baseline is
+occupied windows rather than the whole span, because one busy afternoon inside a
+quiet year would otherwise mark every window as a concentration — which says
+more about the span than the activity.
+
+An undated relationship is not a dated event. Where a source recorded no time,
+the relationship is excluded from temporal analysis rather than being given the
+ingestion timestamp, which would cluster every undated edge into a burst that
+never happened.
+
+**Authorization, which is structural rather than remembered.** The flow is:
+
+```
+raw graph -> case scope -> evidence authorization -> privacy -> view -> signal
+```
+
+Analytics asks GraphService for the authorized, masked graph *this reader* may
+see and computes from that alone. A reader who may not see an evidence item does
+not get signals computed from it and then filtered — those observations were
+never in scope, so the entities they would have introduced do not exist as far
+as the metrics are concerned. The `AnalysableGraph` type carries no natural key
+at all: an entity is a hashed id, a label the privacy policy already passed, and
+a type. A restricted identifier cannot leak through a forgotten code path
+because there is no code path where analytics holds one.
+
+Two consequences that look like defects and are not: **two readers legitimately
+get different answers**, because degree is degree within the authorized graph;
+and **a read computes but never persists** — overview, entity and path create no
+run and no signal, for the same reason viewing evidence never starts a
+processing run. Recording signals is an explicit `POST`.
+
+Path finding resolves a hashed entity id back to a natural key only inside the
+authorized view, so a caller cannot ask about an entity they cannot see: there
+is nothing to resolve the id against. A path that would leave the reader's scope
+is reported as no path rather than as a walk with a hole in it, and an entity
+that is absent answers identically to one that is out of scope.
+
+Roles: `VIEW_ANALYTICS` to read, `RUN_ANALYTICS` to record signals. The analyst
+role deliberately holds the first and not the second.
+
+**Bounds.** `max_path_length` (6) with a hard repository ceiling of 10 that a
+misconfigured policy cannot exceed; `max_relationships` (20000) beyond which a
+view is analysed over the deterministic first N and flagged `truncated` on every
+result that depends on it; `max_signals_per_type`; `max_component_members`.
+Every query is case-scoped and parameterised — the two values Cypher cannot
+parameterise, the traversal bound and the relationship type, are a clamped
+integer and an enum value.
+
+**Versioning.** Every run records its `analytics_version`, the evidence scope it
+saw, who ran it and when. A signal's identity is stable across runs, so a
+re-run recognises what it already produced: it supersedes the previous record
+and keeps it, rather than accumulating duplicates that look like new findings.
+`list_signal_history` returns every version.
+
+**Audit.** `ANALYTICS_STARTED`, `ANALYTICS_COMPLETED`, `ANALYTICS_FAILED`,
+`ANALYTICS_ACCESS_DENIED`, `SIGNAL_CREATED`, `SIGNAL_REVISED` — through the
+existing EventStore, with the acting user, case and correlation id. Payloads
+carry reason codes, scores and versions, never a resource value.
+
+**API.** All authenticated, case-scoped and context-enforced:
+
+- `GET /cases/{case_id}/analytics/overview`
+- `GET /cases/{case_id}/analytics/entity/{entity_id}`
+- `GET /cases/{case_id}/analytics/path/{source_id}/{target_id}`
+- `POST /cases/{case_id}/analytics/run`
+- `GET /cases/{case_id}/signals` (optional `signal_type`)
+- `GET /cases/{case_id}/signals/{signal_id}`
+
+**Synthetic data.** CASE-003, a separate case so Phase 5 and 6 expectations are
+untouched. Group A and group B are joined only through one phone; a helpline is
+reached by four unrelated callers and connects to nothing else; a single
+zero-second call links a number that appears nowhere else; eight calls fall
+inside one hour against otherwise spread-out contact; and a second export at L3
+contains a phone that appears in no other evidence. Nothing in the data
+describes conduct. The CDR source now honours a per-export `security_level`,
+because analytics has to be provable against evidence a given reader cannot see.
+
+**Tests.** 511 passing, 124 new: metrics against graphs whose answers are known
+by hand (path, triangle, star, bowtie, two-triangles, chain, disconnected),
+ranking, components, bridge detection with its weak-connection caveat, temporal
+concentration, determinism, explainability, provenance and version retention,
+case isolation, role and clearance behaviour, the API surface, and the
+EventStore. 22 integration tests run against Neo4j 5 Community, including the
+Cypher path query and its scoping predicate — which only a real server can
+prove, since the in-memory fake walks the graph in Python.
+
+**The mandatory security test.** CASE-003 contains an authorized entity, a
+restricted entity and a relationship between them. A reader without clearance
+for the restricted evidence finds no trace of that entity: not in components,
+not in connectivity, not in bridges, not as a value anywhere in the payload;
+asking for it directly answers exactly as an absent entity does; and a path
+cannot be routed through it. The cleared reader sees it, which is what makes the
+absence meaningful.
+
+**Phase 7A limitations.**
+
+- **Analytics are recomputed per request.** Nothing is cached; each call
+  rebuilds the authorized view. Correct and simple at case scale, and the place
+  to look first if a case ever gets large.
+- **The authorized view is materialised in memory.** Bounded by
+  `max_relationships` and flagged when truncated, but a case beyond that bound is
+  analysed over a prefix rather than in full.
+- **Bridges are articulation points**, so an entity with any leaf attached
+  qualifies. Ranking and the weak-relationship caveat separate the interesting
+  cases from the trivial ones; a threshold on region size would be a policy
+  change, not a code change.
+- **Paths traverse observed relationships only.** Inferred `INFERRED_SAME_ENTITY`
+  links are excluded, consistent with Phase 6: they are derived from two evidence
+  items and an evidence-scoped read cannot authorize them.
+- **Temporal analysis is fixed-window counting.** No seasonality, no baselines
+  per entity, no change-point detection, and no forecasting.
+- **Masked labels can collide.** Two numbers ending in the same four digits mask
+  to the same string; `entity_id` keeps them distinct, and a client should key on
+  it rather than on the label.
+- **No cross-case analytics.** Every query is scoped to one case by construction.
+
 ## In progress
 
-Nothing. Phase 6.5 is complete and committed.
+Nothing. Phase 7A is complete and committed.
 
 ## Explicitly NOT implemented
 
-These are named because the graph and entity resolution exist now, and it would be easy to assume more of them than is true:
+These are named because the graph, entity resolution and analytics exist now, and it would be easy to assume more of them than is true:
 
-- **Graph analytics are NOT implemented.** No centrality, community detection, path finding, or link prediction.
+- **Advanced graph analytics are NOT implemented.** Phase 7A added degree, connected components, articulation-point bridges, fixed-window temporal concentration and bounded shortest paths. There is no community detection, no link prediction, no centrality beyond the bridge heuristic, and no machine learning of any kind.
 - **IMEI/IMSI analytics are NOT implemented.** The `INSERTED_IN` edges record which SIM was seen in which handset, but nothing analyses SIM-swapping or hardware hopping.
 - **Tower / spatio-temporal analytics are NOT implemented.** `cell_id` is carried as a property; there is no CellTower node, no geofencing and no tower-dump intersection.
 - **The Evidence Navigator is NOT implemented.**
+- **Evidence Debt is NOT implemented.**
 - **Entity resolution beyond pairs is NOT implemented.** Resolution decides whether two person observations denote one entity, and only that: there is no transitive clustering, no canonical/golden record, and no entity type other than PERSON.
 - **Frontend graph visualization is NOT implemented.** The DTOs are shaped for a future Cytoscape client; no UI exists.
 - **Blockchain / integrity anchoring is NOT implemented.** Per-version SHA-256 exists as integrity metadata only; no chaining, signing or anchoring, and no admissibility claim.
 
 ## Next — exactly one subsystem
 
-Entity resolution landed in `app/core/resolution/` rather than in `app/core/graph/`
-as this section previously anticipated: it is a processing step over evidence that
-*projects into* the graph, so folding it into the graph package would have blurred
-the boundary the phase exists to keep sharp.
+Two packages landed beside `app/core/graph/` rather than inside it, and for the
+same reason: entity resolution is a processing step over evidence that *projects
+into* the graph, and analytics is a read-model computed *from* it. Folding either
+into the graph package would have blurred the boundary each phase exists to keep
+sharp.
 
 Pick exactly one of the subsystems in **Explicitly NOT implemented** above and
-finish it before starting another. None of them has been started: graph analytics,
-the Evidence Navigator, IMEI/IMSI analytics, tower and spatio-temporal analytics,
-the frontend, and blockchain / integrity anchoring are all absent, and no partial
-scaffolding for any of them exists in the tree.
+finish it before starting another. None of them has been started — the Evidence
+Navigator, Evidence Debt, IMEI/IMSI analytics, tower and spatio-temporal
+analytics, the frontend, and blockchain / integrity anchoring are all absent, and
+no partial scaffolding for any of them exists in the tree.
 
 Do not start two of them in parallel.
 
@@ -494,7 +706,7 @@ Do not start two of them in parallel.
 - **Context switching picks the user's first role.** Multi-role users cannot yet choose which role a context operates under.
 - **The audit log is append-only by application convention, not cryptographically.** The SQLite file is writable by anything with filesystem access; no hash chaining or tamper-evidence yet. Integrity metadata (per-version SHA-256) exists for a future `IntegrityProvider`; no admissibility claim is made.
 - **Two synthetic source adapters only** (`SyntheticCDRSource`, `SyntheticSubscriberRegisterSource`), over small local datasets. No government or operator source integrations, and no FIR, financial or ANPR adapters.
-- **One analyzer**, a structural CDR summary. No real telecom analytics and no graph analytics. (Entity resolution is a separate subsystem, not an analyzer — see Phase 6.)
+- **One analyzer**, a structural CDR summary. No real telecom analytics. (Entity resolution and graph analytics are separate subsystems, not analyzers — see Phases 6 and 7A.)
 - **No production object storage.** Payloads are local files; there is no replication, retention policy, encryption at rest, or lifecycle management.
 - **Staleness is direct-only.** A new evidence version marks that evidence's own results STALE. There is no dependency graph, so a result derived from *other* evidence is not invalidated transitively — `mark_result_state` is the extension point.
 - **No COMPARE operation and no REQUEST ACCESS workflow yet**; versions and results are retained so both can be built on top.

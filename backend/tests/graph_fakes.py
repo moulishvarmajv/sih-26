@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from typing import Sequence
 
+from collections import deque
+
 from app.core.graph.models import (
     GraphNode,
+    GraphPath,
     GraphRelationship,
     GraphSnapshot,
     NodeLabel,
@@ -111,3 +114,84 @@ class InMemoryGraphRepository:
             )
             updated += 1
         return updated
+
+    def find_shortest_path(
+        self,
+        case_id: str,
+        start_key: str,
+        end_key: str,
+        evidence_ids: Sequence[str] | None = None,
+        max_length: int = 6,
+    ) -> GraphPath | None:
+        """Breadth-first over the same scope the Cypher applies.
+
+        The real repository lets the database walk the graph; this walks it in
+        Python. What both must agree on is the *scope* — case, evidence and the
+        exclusion of inferred links — so a test that passes here means the same
+        thing it means against Neo4j. The Cypher itself is covered by the
+        integration suite.
+        """
+        self._check()
+        allowed = None if evidence_ids is None else set(evidence_ids)
+        usable = [
+            relationship
+            for relationship in self.relationships.values()
+            if relationship.type is not RelationshipType.INFERRED_SAME_ENTITY
+            and relationship.provenance is not None
+            and relationship.provenance.case_id == case_id
+            and (allowed is None or relationship.provenance.evidence_id in allowed)
+        ]
+        nodes_by_key = {
+            (node.label, node.key): node for node in self.nodes.values()
+        }
+
+        def resolve(key: str):
+            return [ref for ref in nodes_by_key if ref[1] == key]
+
+        starts, ends = resolve(start_key), resolve(end_key)
+        if not starts or not ends:
+            return None
+        start, end = starts[0], ends[0]
+        if start == end:
+            return None
+
+        adjacency: dict[tuple, list[tuple]] = {}
+        for relationship in usable:
+            left = (relationship.start.label, relationship.start.key)
+            right = (relationship.end.label, relationship.end.key)
+            adjacency.setdefault(left, []).append((right, relationship))
+            adjacency.setdefault(right, []).append((left, relationship))
+
+        queue = deque([(start, [])])
+        seen = {start}
+        while queue:
+            node, walk = queue.popleft()
+            if len(walk) >= max_length:
+                continue
+            for neighbour, relationship in sorted(
+                adjacency.get(node, []), key=lambda item: item[1].observation_id
+            ):
+                if neighbour in seen:
+                    continue
+                path = walk + [relationship]
+                if neighbour == end:
+                    ordered = _ordered_nodes(start, path)
+                    return GraphPath(
+                        tuple(nodes_by_key[ref] for ref in ordered if ref in nodes_by_key),
+                        tuple(path),
+                    )
+                seen.add(neighbour)
+                queue.append((neighbour, path))
+        return None
+
+
+def _ordered_nodes(start, relationships):
+    """Walk the relationship chain, recording the node reached at each hop."""
+    ordered = [start]
+    current = start
+    for relationship in relationships:
+        left = (relationship.start.label, relationship.start.key)
+        right = (relationship.end.label, relationship.end.key)
+        current = right if current == left else left
+        ordered.append(current)
+    return ordered

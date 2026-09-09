@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.context import router as context_router
 from app.api.routes.evidence import router as evidence_router
@@ -36,3 +37,4 @@ app.include_router(context_router)
 app.include_router(evidence_router)
 app.include_router(graph_router)
 app.include_router(resolution_router)
+app.include_router(analytics_router)

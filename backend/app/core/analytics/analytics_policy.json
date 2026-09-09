@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "analytics_version": "analytics-1.0.0",
+  "limits": {
+    "max_relationships": 20000,
+    "max_path_length": 6,
+    "max_signals_per_type": 25,
+    "max_component_members": 200
+  },
+  "connectivity": {
+    "minimum_degree": 4,
+    "top_n": 10,
+    "weights": {
+      "degree": 0.6,
+      "distinct_neighbours": 0.3,
+      "entity_types_touched": 0.1
+    },
+    "normalization": {
+      "degree_saturates_at": 20,
+      "distinct_neighbours_saturates_at": 15,
+      "entity_types_saturates_at": 3
+    }
+  },
+  "bridge": {
+    "minimum_groups_connected": 2,
+    "minimum_entity_types": 2,
+    "weak_relationship_duration_seconds": 5,
+    "weights": {
+      "groups_separated": 0.3,
+      "separated_side_size": 0.4,
+      "entity_types_spanned": 0.2,
+      "neighbour_spread": 0.1
+    },
+    "normalization": {
+      "groups_saturates_at": 4,
+      "separated_side_saturates_at": 5,
+      "entity_types_saturates_at": 3,
+      "neighbours_saturates_at": 10
+    }
+  },
+  "components": {
+    "minimum_members": 2,
+    "isolated_maximum_members": 3
+  },
+  "temporal": {
+    "window_seconds": 3600,
+    "minimum_events_in_window": 3,
+    "concentration_multiple": 2.0,
+    "weights": {
+      "concentration_ratio": 0.7,
+      "event_count": 0.3
+    },
+    "normalization": {
+      "ratio_saturates_at": 5.0,
+      "events_saturate_at": 12
+    }
+  },
+  "confidence_bands": [
+    {
+      "band": "HIGH",
+      "minimum_score": 0.7
+    },
+    {
+      "band": "MEDIUM",
+      "minimum_score": 0.4
+    },
+    {
+      "band": "LOW",
+      "minimum_score": 0.0
+    }
+  ]
+}

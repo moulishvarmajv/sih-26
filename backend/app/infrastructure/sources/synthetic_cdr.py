@@ -82,9 +82,23 @@ class SyntheticCDRSource:
             },
             classification=TrustClassification.OBSERVED,
             source_reference=f"{document.get('dataset', 'unknown')}:{export_id}",
-            security_level=self._security_level,
+            # An export may declare its own clearance level. Real exports do not
+            # all carry the same sensitivity, and analytics has to be provable
+            # against evidence a given reader cannot see.
+            security_level=_security_level_of(export, self._security_level),
             sensitive_fields=CDR_SENSITIVE_FIELDS,
         )
+
+
+def _security_level_of(export: Mapping[str, Any], default: str | None) -> str | None:
+    declared = export.get("security_level")
+    if declared is None:
+        return default
+    if not isinstance(declared, str) or not declared.strip():
+        raise EvidenceSourceError(
+            f"export '{export.get('export_id')}' has an invalid 'security_level'"
+        )
+    return declared
 
 
 def normalise_record(record: Any, export_id: str, index: int) -> dict[str, Any]:

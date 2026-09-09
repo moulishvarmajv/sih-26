@@ -186,3 +186,75 @@ def test_a_reader_without_the_case_reaches_nothing_in_the_pipeline(live):
     for response in responses:
         for value in RESTRICTED_VALUES:
             assert value not in response.text
+
+
+def test_analytics_run_against_the_real_graph(live):
+    """The analytics path, end to end, with Neo4j answering the path query.
+
+    Only a real server can prove the Cypher is valid and that its scoping
+    predicate holds: the in-memory fake walks the graph in Python, so a mistake
+    in the `ALL(...)` clause would pass there and fail here.
+    """
+    client, case = live.client, live.case
+    headers = live.authenticate()
+    live.graph_service.ingest_case_evidence(case)
+
+    overview = client.get(f"/cases/{case.id}/analytics/overview", headers=headers)
+    assert overview.status_code == 200
+    body = overview.json()
+    assert body["entity_count"] > 0
+    assert body["components"]
+    assert body["top_connectivity"]
+
+    # A path between two entities the reader can see, answered by the database.
+    phones = [
+        metric["entity"]
+        for metric in body["top_connectivity"]
+        if metric["entity"]["entity_type"] == "Phone"
+    ]
+    assert len(phones) >= 2
+    path = client.get(
+        f"/cases/{case.id}/analytics/path/{phones[0]['entity_id']}/{phones[1]['entity_id']}",
+        headers=headers,
+    )
+    assert path.status_code == 200
+    walk = path.json()
+    assert walk["max_length_searched"] >= 1
+    if walk["found"]:
+        assert walk["length"] == len(walk["steps"])
+        assert len(walk["entities"]) == walk["length"] + 1
+        assert walk["supporting_evidence_ids"]
+
+    run = client.post(f"/cases/{case.id}/analytics/run", headers=headers)
+    assert run.status_code == 200
+    assert run.json()["signal_count"] > 0
+
+    signals = client.get(f"/cases/{case.id}/signals", headers=headers).json()["signals"]
+    assert signals
+    assert all(signal["analytics_version"] for signal in signals)
+    assert all(signal["reasons"] for signal in signals)
+
+
+def test_the_real_path_query_stays_inside_the_reader_scope(live):
+    """A path may not be routed through an observation the reader cannot see."""
+    client, case = live.client, live.case
+    headers = live.authenticate()
+    live.graph_service.ingest_case_evidence(case)
+
+    body = client.get(f"/cases/{case.id}/analytics/overview", headers=headers).json()
+    phones = [
+        metric["entity"]["entity_id"]
+        for metric in body["top_connectivity"]
+        if metric["entity"]["entity_type"] == "Phone"
+    ]
+
+    for source in phones[:3]:
+        for target in phones[:3]:
+            if source == target:
+                continue
+            walk = client.get(
+                f"/cases/{case.id}/analytics/path/{source}/{target}", headers=headers
+            ).json()
+            for value in RESTRICTED_VALUES:
+                assert value not in str(walk)
+            assert walk["length"] <= walk["max_length_searched"]

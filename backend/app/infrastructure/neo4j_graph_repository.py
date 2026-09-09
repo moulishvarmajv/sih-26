@@ -18,6 +18,7 @@ from typing import Any, Sequence
 from app.core.graph.models import (
     NATURAL_KEY,
     GraphNode,
+    GraphPath,
     GraphProvenance,
     GraphRelationship,
     GraphSnapshot,
@@ -57,6 +58,11 @@ RELATIONSHIP_INDEXES: tuple[tuple[RelationshipType, str], ...] = (
 INFERRED_LINK_INDEXES: tuple[tuple[RelationshipType, str], ...] = (
     (RelationshipType.INFERRED_SAME_ENTITY, "resolution_id"),
 )
+
+#: A hard ceiling on traversal depth, independent of any policy value. A
+#: misconfigured policy should not be able to ask the database for an unbounded
+#: walk.
+_MAX_TRAVERSAL_DEPTH = 10
 
 _PROVENANCE_KEYS = (
     "case_id",
@@ -246,6 +252,77 @@ class Neo4jGraphRepository:
             nodes.setdefault((end.label, end.key), end)
             relationships.append(_to_relationship(row, start.ref, end.ref))
         return GraphSnapshot(tuple(nodes.values()), tuple(relationships))
+
+    def find_shortest_path(
+        self,
+        case_id: str,
+        start_key: str,
+        end_key: str,
+        evidence_ids: Sequence[str] | None = None,
+        max_length: int = 6,
+    ) -> GraphPath | None:
+        """Bounded, case- and evidence-scoped shortest path.
+
+        Two things are interpolated rather than parameterised, because Cypher
+        does not accept parameters in either position: the traversal's upper
+        bound, which is coerced to an int and clamped, and the excluded
+        relationship type, which comes from an enum. Everything a caller
+        supplies — keys, case id, evidence ids — is a parameter.
+
+        The `ALL(...)` predicate is what keeps the search honest: every
+        relationship on the returned path has to be inside the reader's scope,
+        so the database routes around observations they may not see instead of
+        returning a path that would have to be filtered out afterwards.
+        """
+        hops = max(1, min(int(max_length), _MAX_TRAVERSAL_DEPTH))
+        restrict = evidence_ids is not None
+        rows = self._run(
+            "MATCH (a) WHERE a.msisdn = $start OR a.person_id = $start OR a.imei = $start "
+            "MATCH (b) WHERE b.msisdn = $end OR b.person_id = $end OR b.imei = $end "
+            "WITH a, b LIMIT 1 "
+            f"MATCH p = shortestPath((a)-[*1..{hops}]-(b)) "
+            "WHERE ALL(r IN relationships(p) WHERE "
+            "  r.case_id = $case_id "
+            f"  AND type(r) <> '{RelationshipType.INFERRED_SAME_ENTITY.value}' "
+            "  AND ($restrict = false OR r.evidence_id IN $evidence_ids)) "
+            "RETURN [n IN nodes(p) | {labels: labels(n), props: properties(n)}] AS path_nodes, "
+            "       [r IN relationships(p) | {type: type(r), props: properties(r), "
+            "         start_labels: labels(startNode(r)), start_props: properties(startNode(r)), "
+            "         end_labels: labels(endNode(r)), end_props: properties(endNode(r))}] AS path_rels "
+            "LIMIT 1",
+            {
+                "start": start_key,
+                "end": end_key,
+                "case_id": case_id,
+                "restrict": restrict,
+                "evidence_ids": list(evidence_ids or ()),
+            },
+        )
+        if not rows:
+            return None
+
+        row = rows[0]
+        nodes = []
+        for entry in row["path_nodes"]:
+            node = _to_node(entry["labels"], entry["props"])
+            if node is None:
+                return None  # a path through a node this model cannot name is not a path
+            nodes.append(node)
+
+        relationships = []
+        for entry in row["path_rels"]:
+            start = _to_node(entry["start_labels"], entry["start_props"])
+            end = _to_node(entry["end_labels"], entry["end_props"])
+            if start is None or end is None:
+                return None
+            relationships.append(
+                _to_relationship(
+                    {"rel_type": entry["type"], "rel_props": entry["props"]},
+                    start.ref,
+                    end.ref,
+                )
+            )
+        return GraphPath(tuple(nodes), tuple(relationships))
 
     def fetch_inferred_links(
         self, case_id: str, resolution_ids: Sequence[str] | None = None

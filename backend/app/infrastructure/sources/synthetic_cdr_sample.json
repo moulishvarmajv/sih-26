@@ -72,6 +72,232 @@
           "cell_id": "MH-NAGPUR-0031"
         }
       ]
+    },
+    {
+      "export_id": "CDR-EXPORT-ANL-001",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-003",
+      "note": "Analytics fixture. Group A and group B are joined only through +919810300001. +911800111222 is an ordinary helpline that four unrelated callers reach and that connects to nothing else \u2014 high degree for a mundane reason. The single zero-second call to +919999400001 is the kind of contact that looks structurally like a connection and is not one. Contact is otherwise spread across the day; the eight calls on 5 March all fall inside a single hour, which is what the temporal signal is measuring. Nothing here describes conduct.",
+      "records": [
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100002",
+          "timestamp": "2026-03-01T09:00:00+05:30",
+          "duration_seconds": 120,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01",
+          "subscriber_id": "SUB-ANL-A1"
+        },
+        {
+          "caller": "+919820100002",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-01T13:20:00+05:30",
+          "duration_seconds": 200,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100003",
+          "callee": "+919820100001",
+          "timestamp": "2026-03-01T17:45:00+05:30",
+          "duration_seconds": 75,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919730200001",
+          "callee": "+919730200002",
+          "timestamp": "2026-03-02T11:00:00+05:30",
+          "duration_seconds": 150,
+          "imei": "352222222222222",
+          "imsi": "404450222222222",
+          "cell_id": "MH-B-07",
+          "subscriber_id": "SUB-ANL-B1"
+        },
+        {
+          "caller": "+919730200002",
+          "callee": "+919730200003",
+          "timestamp": "2026-03-02T15:30:00+05:30",
+          "duration_seconds": 90,
+          "imei": "352222222222222",
+          "imsi": "404450222222222",
+          "cell_id": "MH-B-07"
+        },
+        {
+          "caller": "+919730200003",
+          "callee": "+919730200001",
+          "timestamp": "2026-03-02T19:55:00+05:30",
+          "duration_seconds": 60,
+          "imei": "352222222222222",
+          "imsi": "404450222222222",
+          "cell_id": "MH-B-07"
+        },
+        {
+          "caller": "+919810300001",
+          "callee": "+919820100001",
+          "timestamp": "2026-03-04T10:00:00+05:30",
+          "duration_seconds": 340,
+          "imei": "353333333333333",
+          "imsi": "404450333333333",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919810300001",
+          "callee": "+919730200001",
+          "timestamp": "2026-03-04T16:40:00+05:30",
+          "duration_seconds": 410,
+          "imei": "353333333333333",
+          "imsi": "404450333333333",
+          "cell_id": "MH-B-07"
+        },
+        {
+          "caller": "+919845600001",
+          "callee": "+911800111222",
+          "timestamp": "2026-03-03T10:05:00+05:30",
+          "duration_seconds": 95,
+          "imei": "354444444444441",
+          "imsi": "404450444444444",
+          "cell_id": "MH-C-11"
+        },
+        {
+          "caller": "+919845600002",
+          "callee": "+911800111222",
+          "timestamp": "2026-03-03T12:20:00+05:30",
+          "duration_seconds": 110,
+          "imei": "354444444444442",
+          "imsi": "404450444444444",
+          "cell_id": "MH-C-11"
+        },
+        {
+          "caller": "+919845600003",
+          "callee": "+911800111222",
+          "timestamp": "2026-03-03T14:35:00+05:30",
+          "duration_seconds": 125,
+          "imei": "354444444444443",
+          "imsi": "404450444444444",
+          "cell_id": "MH-C-11"
+        },
+        {
+          "caller": "+919845600004",
+          "callee": "+911800111222",
+          "timestamp": "2026-03-03T16:50:00+05:30",
+          "duration_seconds": 140,
+          "imei": "354444444444444",
+          "imsi": "404450444444444",
+          "cell_id": "MH-C-11"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:00:00+05:30",
+          "duration_seconds": 45,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:06:00+05:30",
+          "duration_seconds": 46,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:12:00+05:30",
+          "duration_seconds": 47,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:18:00+05:30",
+          "duration_seconds": 48,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:24:00+05:30",
+          "duration_seconds": 49,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:30:00+05:30",
+          "duration_seconds": 50,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:36:00+05:30",
+          "duration_seconds": 51,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100001",
+          "callee": "+919820100003",
+          "timestamp": "2026-03-05T14:42:00+05:30",
+          "duration_seconds": 52,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919820100003",
+          "callee": "+919999400001",
+          "timestamp": "2026-03-06T22:14:00+05:30",
+          "duration_seconds": 0,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        }
+      ]
+    },
+    {
+      "export_id": "CDR-EXPORT-ANL-RESTRICTED",
+      "operator": "SYNTH-TELECOM",
+      "case_id": "CASE-003",
+      "security_level": "L3",
+      "note": "Restricted. +919000500001 appears in no other export, so a reader without L3 must see no trace of it \u2014 no entity, no degree, no path and no signal.",
+      "records": [
+        {
+          "caller": "+919820100001",
+          "callee": "+919000500001",
+          "timestamp": "2026-03-07T08:00:00+05:30",
+          "duration_seconds": 500,
+          "imei": "351111111111111",
+          "imsi": "404450111111111",
+          "cell_id": "MH-A-01"
+        },
+        {
+          "caller": "+919000500001",
+          "callee": "+919730200001",
+          "timestamp": "2026-03-07T08:40:00+05:30",
+          "duration_seconds": 300,
+          "imei": "352222222222222",
+          "imsi": "404450222222222",
+          "cell_id": "MH-B-07"
+        }
+      ]
     }
   ]
 }

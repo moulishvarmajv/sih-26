@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # Entity resolution policy: matching weights, thresholds and conflict rules
     RESOLUTION_POLICY_PATH: str = "app/core/resolution/resolution_policy.json"
 
+    # Graph analytics policy: signal thresholds, weights, windows and limits
+    ANALYTICS_POLICY_PATH: str = "app/core/analytics/analytics_policy.json"
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

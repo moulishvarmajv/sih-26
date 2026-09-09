@@ -29,6 +29,10 @@ class ApiError(str, Enum):
     GRAPH_UNAVAILABLE = "GRAPH_UNAVAILABLE"
     RESOLUTION_ACCESS_DENIED = "RESOLUTION_ACCESS_DENIED"
     RESOLUTION_NOT_OPEN = "RESOLUTION_NOT_OPEN"
+    ANALYTICS_ACCESS_DENIED = "ANALYTICS_ACCESS_DENIED"
+    # An entity that is absent and one the reader may not see answer alike, so
+    # neither can be distinguished by probing.
+    ANALYTICS_ENTITY_NOT_FOUND = "ANALYTICS_ENTITY_NOT_FOUND"
 
 
 def http_error(error: ApiError, status_code: int) -> HTTPException:
@@ -64,3 +68,6 @@ RESOLUTION_REVIEW_ERRORS = _documented(status.HTTP_409_CONFLICT)
 
 #: Login answers 401 for every failure mode, so none of them can be told apart.
 LOGIN_ERRORS = _documented(status.HTTP_401_UNAUTHORIZED)
+
+#: Analytics answers 404 for an entity that is absent *or* out of scope.
+ANALYTICS_ERRORS = _documented(status.HTTP_404_NOT_FOUND)

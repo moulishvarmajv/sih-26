@@ -260,3 +260,152 @@ class ResolutionRunResponse(BaseModel):
 
 class ResolutionReviewRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=512)
+
+
+class AnalyticsEntityDTO(BaseModel):
+    entity_id: str  # opaque and stable; never the natural key, which may be masked
+    entity_type: str
+    label: str  # masked when the reader's evidence decision was PARTIAL
+
+
+class SignalMetricDTO(BaseModel):
+    name: str
+    value: float
+    normalized: float  # the value mapped into [0, 1] by the policy's saturation point
+    weight: float
+    contribution: float  # normalized * weight: what actually moved the score
+
+
+class ConnectivityDTO(BaseModel):
+    """Degree within the *authorized* case graph, not the whole graph."""
+
+    entity: AnalyticsEntityDTO
+    degree: int
+    in_degree: int
+    out_degree: int
+    distinct_neighbours: int
+    entity_types_touched: list[str]
+    rank: int
+    rank_of: int
+    supporting_relationship_ids: list[str]
+    supporting_evidence_ids: list[str]
+
+
+class BridgeDTO(BaseModel):
+    entity: AnalyticsEntityDTO
+    groups_separated: int
+    group_sizes: list[int]
+    separated_side_size: int
+    entity_types_spanned: list[str]
+    neighbour_count: int
+    rests_on_weak_relationship: bool
+    supporting_relationship_ids: list[str]
+    supporting_evidence_ids: list[str]
+
+
+class ComponentDTO(BaseModel):
+    component_id: str
+    entity_count: int
+    relationship_count: int
+    entity_type_counts: dict
+    dominant_entity_type: str
+    members: list[AnalyticsEntityDTO]
+    supporting_evidence_ids: list[str]
+
+
+class TemporalWindowDTO(BaseModel):
+    window_start: str
+    window_end: str
+    event_count: int
+    mean_event_count: float
+    concentration_ratio: float
+    supporting_relationship_ids: list[str]
+    supporting_evidence_ids: list[str]
+
+
+class AnalyticsOverviewResponse(BaseModel):
+    case_id: str
+    analytics_version: str
+    entity_count: int
+    relationship_count: int
+    evidence_in_scope: int
+    excluded_evidence_count: int
+    truncated: bool
+    masked_properties: list[str]
+    components: list[ComponentDTO]
+    top_connectivity: list[ConnectivityDTO]
+    bridges: list[BridgeDTO]
+    temporal_concentrations: list[TemporalWindowDTO]
+
+
+class EntityAnalyticsResponse(BaseModel):
+    case_id: str
+    analytics_version: str
+    entity: AnalyticsEntityDTO
+    connectivity: ConnectivityDTO
+    bridge: BridgeDTO | None = None
+    component_id: str | None = None
+    component_entity_count: int
+    neighbours: list[AnalyticsEntityDTO]
+    masked_properties: list[str]
+
+
+class PathStepDTO(BaseModel):
+    relationship_id: str
+    relationship_type: str
+    from_entity: AnalyticsEntityDTO
+    to_entity: AnalyticsEntityDTO
+    evidence_id: str
+    observed_at: str
+
+
+class PathResponse(BaseModel):
+    case_id: str
+    analytics_version: str
+    source: AnalyticsEntityDTO
+    target: AnalyticsEntityDTO
+    found: bool
+    length: int
+    max_length_searched: int
+    reason: str
+    steps: list[PathStepDTO]
+    entities: list[AnalyticsEntityDTO]
+    supporting_evidence_ids: list[str]
+
+
+class SignalResponse(BaseModel):
+    signal_id: str
+    case_id: str
+    signal_type: str
+    status: str
+    version: int
+    score: float
+    confidence: str
+    reasons: list[str]
+    metrics: list[SignalMetricDTO]
+    entities: list[AnalyticsEntityDTO]
+    supporting_relationship_ids: list[str]
+    supporting_evidence_ids: list[str]
+    detail: dict
+    created_at: str
+    analytics_version: str
+    run_id: str
+
+
+class SignalListResponse(BaseModel):
+    case_id: str
+    signals: list[SignalResponse]
+
+
+class AnalyticsRunResponse(BaseModel):
+    run_id: str
+    case_id: str
+    analytics_version: str
+    executed_at: str
+    executed_by: str
+    evidence_in_scope: int
+    node_count: int
+    relationship_count: int
+    signal_count: int
+    excluded_evidence_count: int
+    truncated: bool

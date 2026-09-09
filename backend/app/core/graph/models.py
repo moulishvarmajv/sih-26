@@ -42,6 +42,32 @@ class RelationshipType(str, Enum):
     INFERRED_SAME_ENTITY = "INFERRED_SAME_ENTITY"
 
 
+#: Labels that denote a real-world entity. `Case` and `Evidence` nodes are
+#: structural — they record where an observation came from — so they are not
+#: entities an investigation reasons about.
+ENTITY_LABELS: frozenset[NodeLabel] = frozenset(
+    {
+        NodeLabel.PERSON,
+        NodeLabel.PHONE,
+        NodeLabel.DEVICE,
+        NodeLabel.ACCOUNT,
+        NodeLabel.CELL_TOWER,
+    }
+)
+
+#: Relationships that connect one entity to another. `OBSERVED_IN` and
+#: `BELONGS_TO` attach an entity to its provenance instead, and treating them as
+#: connections would make every entity in an export adjacent to every other —
+#: which says something about the export, not about the entities.
+ENTITY_RELATIONSHIPS: frozenset[RelationshipType] = frozenset(
+    {
+        RelationshipType.USES,
+        RelationshipType.INSERTED_IN,
+        RelationshipType.CALLED,
+    }
+)
+
+
 #: The property that identifies a node of each label. Every MERGE keys on this,
 #: and every constraint in the schema is built from this map.
 NATURAL_KEY: Mapping[NodeLabel, str] = {
@@ -140,6 +166,26 @@ class GraphRelationship:
             merged.update(self.provenance.as_properties())
         merged["observation_id"] = self.observation_id
         return merged
+
+
+@dataclass(frozen=True)
+class GraphPath:
+    """An ordered walk returned by the repository.
+
+    Nodes and relationships alternate: `nodes[i]` is joined to `nodes[i + 1]` by
+    `relationships[i]`. Kept as domain objects like everything else that crosses
+    this boundary — a path never arrives as a driver Path.
+    """
+
+    nodes: tuple[GraphNode, ...] = ()
+    relationships: tuple[GraphRelationship, ...] = ()
+
+    @property
+    def length(self) -> int:
+        return len(self.relationships)
+
+    def __bool__(self) -> bool:
+        return bool(self.relationships)
 
 
 @dataclass(frozen=True)

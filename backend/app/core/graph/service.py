@@ -18,6 +18,7 @@ from typing import Any, Callable, Mapping
 
 from app.core.audit.event_store import ActorType, EventDraft, EventStore, FlightRecorderEvent
 from app.core.domain.agency import AgencyContext
+from app.core.domain.authorization import AuthorizationDecision
 from app.core.domain.case import Case
 from app.core.domain.identity import User
 from app.core.evidence.object_store import EvidenceObjectStore
@@ -73,6 +74,11 @@ class AuthorizedGraph:
     relationships: tuple[GraphRelationship, ...]
     masked_properties: tuple[str, ...]
     excluded_evidence_count: int
+    #: The evidence this reader was authorized for, which is the scope the
+    #: subgraph was built from. Carried so a caller that needs to ask the
+    #: database a further scoped question — a path search — can pass the same
+    #: scope rather than deriving its own and risking a wider one.
+    evidence_ids: tuple[str, ...] = ()
 
 
 class GraphService:
@@ -163,11 +169,42 @@ class GraphService:
 
     # -- authorized read --------------------------------------------------
 
+    def authorize_case(
+        self, user: User, context: AgencyContext, case: Case, action: str = ACTION_VIEW_GRAPH
+    ) -> AuthorizationDecision:
+        """Case-level authorization on its own, for a caller that needs no subgraph.
+
+        Reading a stored signal does not require fetching the graph it was
+        computed from, but it does require the same case decision — this is that
+        check, without the query behind it.
+        """
+        decision = self._security.authorize_case_access(user, context, case, action)
+        if not decision.grants_access:
+            self._record(
+                FlightRecorderEvent.GRAPH_ACCESS_DENIED,
+                user.id,
+                case.id,
+                decision.correlation_id,
+                {"reason": decision.reason.value, "scope": "CASE", "action": action},
+            )
+            raise GraphAccessDenied(decision.reason.value)
+        return decision
+
     def get_case_graph(
-        self, user: User, context: AgencyContext, case: Case
+        self,
+        user: User,
+        context: AgencyContext,
+        case: Case,
+        action: str = ACTION_VIEW_GRAPH,
     ) -> AuthorizedGraph:
+        """The authorized subgraph for one reader.
+
+        `action` is what the caller is doing with it. Analytics passes its own
+        action so the role check, and the audit trail, distinguish reading the
+        graph from analysing it.
+        """
         case_decision = self._security.authorize_case_access(
-            user, context, case, ACTION_VIEW_GRAPH
+            user, context, case, action
         )
         if not case_decision.grants_access:
             self._record(
@@ -184,7 +221,7 @@ class GraphService:
         excluded = 0
         for record in self._evidence.list_evidence_for_case(case.id):
             decision = self._security.authorize_evidence_access(
-                user, context, case, record, ACTION_VIEW_GRAPH
+                user, context, case, record, action
             )
             if not decision.grants_access:
                 excluded += 1
@@ -216,7 +253,9 @@ class GraphService:
         )
 
         masked_properties = self._graph_properties_for(redacted_fields)
-        authorized = self._apply_masking(case.id, snapshot, masked_properties, excluded)
+        authorized = self._apply_masking(
+            case.id, snapshot, masked_properties, excluded, tuple(allowed_evidence)
+        )
         self._record(
             FlightRecorderEvent.GRAPH_ACCESS_ALLOWED,
             user.id,
@@ -249,9 +288,17 @@ class GraphService:
         snapshot: GraphSnapshot,
         masked_properties: tuple[str, ...],
         excluded: int,
+        evidence_ids: tuple[str, ...] = (),
     ) -> AuthorizedGraph:
         if not masked_properties:
-            return AuthorizedGraph(case_id, snapshot.nodes, snapshot.relationships, (), excluded)
+            return AuthorizedGraph(
+                case_id,
+                snapshot.nodes,
+                snapshot.relationships,
+                (),
+                excluded,
+                evidence_ids,
+            )
 
         partial = self._privacy.partial_mask_fields
         nodes = tuple(
@@ -273,7 +320,9 @@ class GraphService:
             )
             for relationship in snapshot.relationships
         )
-        return AuthorizedGraph(case_id, nodes, relationships, masked_properties, excluded)
+        return AuthorizedGraph(
+            case_id, nodes, relationships, masked_properties, excluded, evidence_ids
+        )
 
     def _record(
         self,

@@ -27,6 +27,8 @@ INVESTIGATOR = Role(
         "RUN_ENTITY_RESOLUTION",
         "VIEW_ENTITY_RESOLUTION",
         "REVIEW_ENTITY_RESOLUTION",
+        "VIEW_ANALYTICS",
+        "RUN_ANALYTICS",
     ),
 )
 ANALYST = Role(
@@ -42,6 +44,7 @@ ANALYST = Role(
         "VIEW_GRAPH",
         "RUN_ENTITY_RESOLUTION",
         "VIEW_ENTITY_RESOLUTION",
+        "VIEW_ANALYTICS",
     ),
 )
 

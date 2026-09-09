@@ -23,6 +23,8 @@ from app.core.domain.agency import AgencyContext
 from app.core.domain.identity import User
 from app.core.evidence.analysis import CdrSummaryAnalyzer
 from app.core.evidence.service import EvidenceService
+from app.core.analytics.policy import AnalyticsPolicy, load_analytics_policy
+from app.core.analytics.service import GraphAnalyticsService
 from app.core.graph.service import GraphService
 from app.core.resolution.policy import ResolutionPolicy, load_resolution_policy
 from app.core.resolution.service import EntityResolutionService
@@ -31,6 +33,7 @@ from app.infrastructure.neo4j_graph_repository import Neo4jGraphRepository
 from app.infrastructure.sqlite_case_repository import SQLiteCaseRepository
 from app.infrastructure.sqlite_event_store import SQLiteEventStore
 from app.infrastructure.sqlite_evidence_repository import SQLiteEvidenceRepository
+from app.infrastructure.sqlite_analytics_repository import SQLiteAnalyticsRepository
 from app.infrastructure.sqlite_resolution_repository import SQLiteResolutionRepository
 from app.security.agencies import InMemoryAgencyDirectory
 from app.security.authentication import (
@@ -177,6 +180,27 @@ def get_resolution_service() -> EntityResolutionService:
 
 
 @lru_cache(maxsize=1)
+def get_analytics_policy() -> AnalyticsPolicy:
+    return load_analytics_policy()
+
+
+@lru_cache(maxsize=1)
+def get_analytics_repository() -> SQLiteAnalyticsRepository:
+    return SQLiteAnalyticsRepository(settings.INVESTIGATION_DB_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_analytics_service() -> GraphAnalyticsService:
+    return GraphAnalyticsService(
+        graph_service=get_graph_service(),
+        graph_repository=get_graph_repository(),
+        analytics_repository=get_analytics_repository(),
+        event_store=get_event_store(),
+        policy=get_analytics_policy(),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_security_service() -> SecurityService:
     policy = get_security_policy()
     return SecurityService(
@@ -207,6 +231,9 @@ CACHED_PROVIDERS = (
     get_resolution_policy,
     get_resolution_repository,
     get_resolution_service,
+    get_analytics_policy,
+    get_analytics_repository,
+    get_analytics_service,
 )
 
 

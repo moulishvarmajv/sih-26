@@ -34,6 +34,8 @@ from pathlib import Path
 
 from app.core.domain.case import Case
 from app.core.evidence.analysis import CDR_SUMMARY
+from app.core.evidence.models import ResultState
+from app.core.evidence.service import evidence_id_for
 from app.infrastructure.sources.synthetic_cdr import DEFAULT_DATASET, SyntheticCDRSource
 from app.infrastructure.sources.synthetic_subscriber import SyntheticSubscriberRegisterSource
 
@@ -121,7 +123,7 @@ def build_debt_case(
     resolution_service.run(user, context, case)
     analytics_service.run(user, context, case)
 
-    supersede_extra_export(evidence_service, case, tmp_path)
+    supersede_extra_export(evidence_service, evidence_repository, case, tmp_path)
 
     return DebtCaseFixture(
         evidence_ids=by_record,
@@ -149,7 +151,9 @@ class ReplaySource:
         return [self._item]
 
 
-def supersede_extra_export(evidence_service, case: Case, tmp_path: Path) -> None:
+def supersede_extra_export(
+    evidence_service, evidence_repository, case: Case, tmp_path: Path
+) -> str:
     """Ingest a corrected `CDR-EXPORT-DEBT-EXTRA`, leaving its result stale.
 
     A static dataset cannot hold two versions of one export, so the correction
@@ -158,9 +162,14 @@ def supersede_extra_export(evidence_service, case: Case, tmp_path: Path) -> None
 
     The corrected export is fetched under the *dataset's* case id and ingested
     under the caller's, so this works whether the case is `CASE-004` or a live
-    suite's per-run id. Fetching under the caller's id instead would silently
-    return nothing for a live run, and the staleness it exists to create would
-    never happen.
+    suite's per-run id. Fetching under the caller's id instead returns nothing
+    for a live run, and the staleness this exists to create never happens.
+
+    The postconditions are checked here rather than left to whichever assertion
+    first notices, because that is the difference between "the fixture failed to
+    supersede EV-xxx" and "the STALE debt category is missing" — the second is
+    true, unhelpful, and three layers from the cause. Returns the evidence id
+    whose result is now stale.
     """
     dataset = json.loads(DEFAULT_DATASET.read_text(encoding="utf-8"))
     for export in dataset["exports"]:
@@ -176,3 +185,17 @@ def supersede_extra_export(evidence_service, case: Case, tmp_path: Path) -> None
     assert replayed, f"the dataset no longer carries {EXTRA_EXPORT} for {CASE.id}"
     for item in replayed:
         evidence_service.ingest_from_source(case, ReplaySource(source.source_id, item))
+
+    evidence_id = evidence_id_for(case.id, source.source_id, EXTRA_EXPORT)
+    versions = evidence_repository.list_versions(evidence_id)
+    assert len(versions) >= 2, (
+        f"{EXTRA_EXPORT} ({evidence_id}) still has {len(versions)} version(s) in "
+        f"case {case.id}: the correction was not ingested as a new version, so "
+        f"nothing can be stale"
+    )
+    results = evidence_repository.list_results(evidence_id)
+    assert any(result.state is ResultState.STALE for result in results), (
+        f"{EXTRA_EXPORT} ({evidence_id}) has no STALE result after superseding: "
+        f"{[(r.result_id, r.state.value) for r in results]}"
+    )
+    return evidence_id

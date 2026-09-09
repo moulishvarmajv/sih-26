@@ -909,12 +909,22 @@ integration tests pass against a real Neo4j 5 Community container, and the suite
 skips them and stays green with no server reachable.
 
 The live run earned its keep on the first attempt, in the way integration tests
-usually do: the debt fixture fetched its corrected export under the *dataset's*
-case id and ingested it under the run's unique one, so for a live run the
-correction landed nowhere, no version was superseded, and the `STALE` category
-was silently absent. Every in-memory suite passed throughout, because they use
-the dataset's own case id. `ReplaySource` in `tests/debt_case.py` now makes the
-fetch-under-one-id, ingest-under-another split explicit for both.
+usually do. The live suites write under a case id unique to the run so they can
+clean up exactly what they wrote, but the debt fixture asked the CDR source for
+its corrected export using *that* id — and the shipped dataset is keyed to
+`CASE-004`, so the fetch returned nothing. No second version was ingested, the
+evidence lifecycle had nothing to supersede, and the `STALE` category was
+silently absent from a live calculation. Every in-memory suite passed throughout,
+because they run under `CASE-004` itself, where the two ids coincide and the
+mistake cannot show.
+
+Nothing was wrong in production code: the evidence lifecycle transitioned the
+earlier result `CURRENT` -> `STALE` the moment it was handed a genuine second
+version, both before and after the fix. `supersede_extra_export` now fetches
+under the dataset's case id and ingests under the caller's — the split
+`ReplaySource` exists for — and asserts its own postconditions, so a recurrence
+fails as "the correction was not ingested as a new version" at the line that
+built it rather than as a missing debt category three layers away.
 
 **Zero external spend.** Deterministic Python and the standard library. No LLM
 call, no paid service, no new runtime dependency, no queue and no scheduler.

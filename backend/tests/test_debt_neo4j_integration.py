@@ -82,7 +82,9 @@ def live(tmp_path, event_store, grants, policy, case_id):
         )
     harness.resolution_service.run(operator, context, case)
     harness.analytics_service.run(operator, context, case)
-    supersede_extra_export(harness.evidence_service, case, tmp_path)
+    supersede_extra_export(
+        harness.evidence_service, harness.evidence_repo, case, tmp_path
+    )
 
     harness.case = case
     harness.evidence_ids = by_record
